@@ -85,11 +85,12 @@ func main() {
 
 	serverAddr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
 	server := &http.Server{
-		Addr:         serverAddr,
-		Handler:      authHandler.AuthMiddleware(mux),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    serverAddr,
+		Handler: authHandler.AuthMiddleware(mux),
+		// Để ReadTimeout và WriteTimeout = 0 hoặc tùy biến nhằm không ngắt các kết nối streaming dài như SSE
+		ReadTimeout:  0,
+		WriteTimeout: 0,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Xử lý Graceful Shutdown

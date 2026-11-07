@@ -639,6 +639,38 @@
       const es = new EventSource(`/api/jobs/${jobId}/stream?token=${token}`);
       activeJobEventSource = es;
 
+      let pollInterval = null;
+
+      // Hàm fallback polling qua GET /api/jobs/{id} nếu SSE bị gián đoạn đường truyền
+      const checkStatusPolling = async () => {
+        try {
+          const res = await apiFetch(`/api/jobs/${jobId}`);
+          const data = await res.json();
+          if (data && data.job) {
+            const j = data.job;
+            const pct = Math.min(j.progress || 0, 100);
+            document.getElementById('job-progress-bar').style.width = pct + '%';
+            document.getElementById('job-progress-label').innerText = pct + '%';
+            if (j.log_output) document.getElementById('job-progress-msg').innerText = j.log_output;
+
+            if (j.status === 'completed') {
+              clearInterval(pollInterval);
+              document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-check text-emerald-400';
+              document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+              document.getElementById('btn-close-job').classList.remove('hidden');
+              if (activeJobEventSource) { activeJobEventSource.close(); activeJobEventSource = null; }
+              if (onComplete) onComplete();
+            } else if (j.status === 'failed') {
+              clearInterval(pollInterval);
+              document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-xmark text-red-400';
+              document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+              document.getElementById('btn-close-job').classList.remove('hidden');
+              if (activeJobEventSource) { activeJobEventSource.close(); activeJobEventSource = null; }
+            }
+          }
+        } catch (e) {}
+      };
+
       es.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data);
@@ -648,23 +680,31 @@
           document.getElementById('job-progress-msg').innerText = event.message || '';
 
           if (event.status === 'completed') {
+            if (pollInterval) clearInterval(pollInterval);
             document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-check text-emerald-400';
             document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
             document.getElementById('btn-close-job').classList.remove('hidden');
             es.close();
+            activeJobEventSource = null;
             if (onComplete) onComplete();
           } else if (event.status === 'failed') {
+            if (pollInterval) clearInterval(pollInterval);
             document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-xmark text-red-400';
             document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
             document.getElementById('btn-close-job').classList.remove('hidden');
             es.close();
+            activeJobEventSource = null;
           }
         } catch (err) {}
       };
 
       es.onerror = () => {
-        document.getElementById('btn-close-job').classList.remove('hidden');
-        es.close();
+        // Nếu kết nối SSE gặp lỗi (ERR_INCOMPLETE_CHUNKED_ENCODING hoặc timeout),
+        // tự động chuyển sang chế độ Polling kiểm tra tiến trình 1.5s/lần mà không bị văng
+        if (!pollInterval) {
+          pollInterval = setInterval(checkStatusPolling, 1500);
+          checkStatusPolling();
+        }
       };
     }
 
