@@ -32,3 +32,4 @@
 - Mọi API nội bộ (`/api/*`) đều bắt buộc xác thực qua Token HMAC-SHA256 (ngoại trừ `/api/health`, `/api/auth/login`, `/favicon.ico`).
 - Hỗ trợ bộ lọc giới hạn IP (`ALLOWED_IPS`) theo từng IP hoặc dải mạng CIDR.
 - Magic Login bắt buộc dùng One-Time Token tạm thời và tự xóa file `.wp_magic_*.php` ngay sau khi đăng nhập.
+

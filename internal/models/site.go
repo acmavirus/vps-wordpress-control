@@ -21,6 +21,20 @@ type Site struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 	TotalPlugins   int        `json:"total_plugins,omitempty"`
 	PendingUpdates int        `json:"pending_updates,omitempty"`
+	TotalThemes    int        `json:"total_themes,omitempty"`
+	ThemeUpdates   int        `json:"theme_updates,omitempty"`
+}
+
+// Theme đại diện cho một theme của website WordPress
+type Theme struct {
+	ID            int64  `json:"id"`
+	SiteID        int64  `json:"site_id"`
+	Slug          string `json:"slug"`
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	UpdateVersion string `json:"update_version,omitempty"`
+	Status        string `json:"status"` // active, inactive
+	HasUpdate     bool   `json:"has_update"`
 }
 
 // Plugin đại diện cho một plugin của website WordPress

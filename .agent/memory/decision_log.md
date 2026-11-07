@@ -33,3 +33,4 @@ Ghi nhận các quyết định kiến trúc và công nghệ quan trọng của
 - **Bối cảnh**: Quét lại VPS nhiều lần gây trùng lặp danh sách plugin trên giao diện.
 - **Quyết định**: Thêm ràng buộc `UNIQUE(site_id, slug)` và sử dụng cú pháp SQLite `ON CONFLICT(site_id, slug) DO UPDATE SET`.
 - **Lợi ích**: Không bao giờ bị nhân bản plugin dù quét lại nhiều lần.
+

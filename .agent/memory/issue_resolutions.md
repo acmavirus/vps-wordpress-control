@@ -26,3 +26,4 @@ Lưu trữ các lỗi đã gặp và giải pháp chuẩn hóa để AI Agent tr
 ### Sự cố 3: GitHub Releases CDN Cache khiến lệnh `update.sh` tải lại bản cũ
 - **Hiện tượng**: Đã tag bản mới nhưng chạy `update.sh` vẫn bị bản cũ do link `releases/latest` bị cache trên CDN Fastly 5-10 phút.
 - **Giải pháp**: Trong `update.sh`, truy vấn trực tiếp GitHub REST API để lấy chính xác Tag mới nhất rồi tải theo đường dẫn direct `releases/download/<TAG>/...`.
+

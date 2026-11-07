@@ -169,6 +169,7 @@
                 <th class="px-4 py-3">Database</th>
                 <th class="px-4 py-3">SSL</th>
                 <th class="px-4 py-3">Plugins</th>
+                <th class="px-4 py-3">Themes</th>
                 <th class="px-4 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
@@ -303,6 +304,23 @@
     <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-plugin-list"></div>
   </div>
 
+  <!-- Drawer Chi tiết Themes -->
+  <div id="drawer-themes" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-800 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+      <div>
+        <h3 class="text-sm font-semibold text-white" id="drawer-themes-title">Quản lý Themes</h3>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="drawer-themes-site-domain"></p>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="updateAllThemesDrawer()" id="btn-update-all-themes-drawer" title="Cập nhật tất cả theme" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
+          <i class="fa-solid fa-cloud-arrow-up"></i><span>Update All</span>
+        </button>
+        <button onclick="closeThemeDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-theme-list"></div>
+  </div>
+
   <!-- Modal Backup -->
   <div id="modal-backup" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
@@ -364,6 +382,7 @@
     let currentPHPChangeSiteId = null;
     let currentBackupSiteId = null;
     let currentDrawerSiteId = null;
+    let currentThemeDrawerSiteId = null;
     let availablePHPVersions = ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
     let activeJobEventSource = null;
 
@@ -527,6 +546,12 @@
               ${s.total_plugins || 0} plugins
             </button>
             ${s.pending_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.pending_updates} update</span>` : ''}
+          </td>
+          <td class="px-4 py-3.5">
+            <button onclick="openThemeDrawer(${s.id})" class="text-purple-400 hover:text-purple-300 underline font-medium">
+              ${s.total_themes || 0} themes
+            </button>
+            ${s.theme_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.theme_updates} update</span>` : ''}
           </td>
           <td class="px-4 py-3.5 text-right space-x-1.5">
             <button onclick="magicLogin(${s.id})" title="Đăng nhập 1-click vào wp-admin" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
@@ -1235,6 +1260,89 @@
 
     function closePluginDrawer() {
       document.getElementById('drawer-plugins').classList.add('translate-x-full');
+    }
+
+    // ==================== THEMES DRAWER & UPDATE ====================
+    async function openThemeDrawer(siteId) {
+      currentThemeDrawerSiteId = siteId;
+      try {
+        const res = await apiFetch(`/api/sites/${siteId}`);
+        const data = await res.json();
+        document.getElementById('drawer-themes-title').innerText = `Themes (${data.themes ? data.themes.length : 0})`;
+        document.getElementById('drawer-themes-site-domain').innerText = data.site ? data.site.domain : '';
+        const list = document.getElementById('drawer-theme-list');
+        list.innerHTML = '';
+
+        if (!data.themes || data.themes.length === 0) {
+          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">Không có theme nào hoặc chưa quét. Nhấn "Quét lại VPS" để cập nhật.</div>`;
+        } else {
+          data.themes.forEach(t => {
+            const hasUpdate = t.has_update == 1;
+            const div = document.createElement('div');
+            div.className = 'py-3 flex items-center justify-between gap-2';
+            div.innerHTML = `
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white text-xs flex items-center space-x-1.5">
+                  <i class="fa-solid fa-paintbrush text-purple-400 text-[10px]"></i>
+                  <span>${t.name}</span>
+                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">update</span>` : ''}
+                </p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">slug: ${t.slug} · v${t.version || 'N/A'}</p>
+              </div>
+              <div class="flex items-center space-x-1.5 shrink-0">
+                ${hasUpdate ? `<button onclick="updateTheme(${siteId}, '${t.slug}')" class="px-2.5 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-1 font-medium">
+                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>Update</span>
+                </button>` : `<span class="text-[10px] text-slate-500 px-2 py-0.5">Bản mới nhất</span>`}
+              </div>
+            `;
+            list.appendChild(div);
+          });
+        }
+        document.getElementById('drawer-themes').classList.remove('translate-x-full');
+      } catch (err) {
+        showToast('Lỗi tải danh sách theme', 'error');
+      }
+    }
+
+    function closeThemeDrawer() {
+      document.getElementById('drawer-themes').classList.add('translate-x-full');
+    }
+
+    async function updateTheme(siteId, slug) {
+      openStepTaskModal(`Cập nhật Theme: ${slug}`, `Đang tải và cập nhật theme ${slug}...`);
+      updateStepTaskProgress(1, 2, `Đang chạy wp theme update ${slug}...`);
+      try {
+        const res = await apiFetch(`/api/sites/${siteId}/themes/${slug}/update`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          completeStepTaskModal(`Cập nhật Theme: ${slug}`, `Đã cập nhật theme ${slug} thành công!`, true);
+          openThemeDrawer(siteId);
+          loadSites();
+        } else {
+          completeStepTaskModal(`Cập nhật Theme: ${slug}`, data.error || 'Cập nhật theme thất bại', false);
+        }
+      } catch (err) {
+        completeStepTaskModal(`Cập nhật Theme: ${slug}`, 'Lỗi kết nối khi gửi yêu cầu cập nhật theme', false);
+      }
+    }
+
+    async function updateAllThemesDrawer() {
+      if (!currentThemeDrawerSiteId) return;
+      openStepTaskModal('Cập nhật Tất Cả Themes', 'Đang cập nhật toàn bộ themes của website...');
+      updateStepTaskProgress(1, 2, 'Đang chạy wp theme update --all...');
+      try {
+        const res = await apiFetch(`/api/sites/${currentThemeDrawerSiteId}/themes/update-all`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          completeStepTaskModal('Cập nhật Tất Cả Themes', 'Đã cập nhật toàn bộ themes thành công!', true);
+          openThemeDrawer(currentThemeDrawerSiteId);
+          loadSites();
+        } else {
+          completeStepTaskModal('Cập nhật Tất Cả Themes', data.error || 'Cập nhật thất bại', false);
+        }
+      } catch (err) {
+        completeStepTaskModal('Cập nhật Tất Cả Themes', 'Lỗi kết nối khi cập nhật themes', false);
+      }
     }
 
     async function updatePlugin(siteId, slug) {

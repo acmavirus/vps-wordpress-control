@@ -16,3 +16,4 @@ globs:
    go vet ./...
    ```
 5. Ghi lại nguyên nhân và giải pháp vào `.agent/memory/issue_resolutions.md`.
+

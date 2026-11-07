@@ -33,6 +33,7 @@ type DiscoveredSite struct {
 	OwnerUser  string
 	SSLActive  bool
 	Plugins    []models.Plugin
+	Themes     []models.Theme
 }
 
 // RunDiscovery tiến hành quét toàn bộ hệ thống file & Nginx để tìm các site WordPress
@@ -211,7 +212,74 @@ func (e *DiscoveryEngine) validateAndEnrichWordPress(site *DiscoveredSite) bool 
 	pluginsDir := filepath.Join(site.RootPath, "wp-content", "plugins")
 	site.Plugins = e.scanPluginsDirectory(pluginsDir)
 
+	// Quét danh sách theme từ thư mục wp-content/themes
+	themesDir := filepath.Join(site.RootPath, "wp-content", "themes")
+	site.Themes = e.scanThemesDirectory(themesDir)
+
 	return true
+}
+
+func (e *DiscoveryEngine) scanThemesDirectory(themesDir string) []models.Theme {
+	var themes []models.Theme
+	entries, err := os.ReadDir(themesDir)
+	if err != nil {
+		return themes
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		slug := entry.Name()
+		styleCSS := filepath.Join(themesDir, slug, "style.css")
+		name, ver := extractThemeHeader(styleCSS)
+		if name == "" {
+			name = slug
+		}
+		themes = append(themes, models.Theme{
+			Slug:      slug,
+			Name:      name,
+			Version:   ver,
+			Status:    "inactive",
+			HasUpdate: false,
+		})
+	}
+	return themes
+}
+
+func extractThemeHeader(filePath string) (string, string) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	nameRegex := regexp.MustCompile(`(?i)^\s*Theme Name:\s*(.+)`)
+	verRegex := regexp.MustCompile(`(?i)^\s*Version:\s*(.+)`)
+
+	var name, ver string
+	lineCount := 0
+
+	for scanner.Scan() && lineCount < 40 {
+		line := scanner.Text()
+		lineCount++
+
+		if name == "" {
+			if matches := nameRegex.FindStringSubmatch(line); len(matches) > 1 {
+				name = strings.TrimSpace(matches[1])
+			}
+		}
+		if ver == "" {
+			if matches := verRegex.FindStringSubmatch(line); len(matches) > 1 {
+				ver = strings.TrimSpace(matches[1])
+			}
+		}
+		if name != "" && ver != "" {
+			break
+		}
+	}
+	return name, ver
 }
 
 func (e *DiscoveryEngine) scanPluginsDirectory(pluginsDir string) []models.Plugin {
@@ -346,7 +414,54 @@ func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 		}
 	}
 
+	// Lấy danh sách theme có update từ WP-CLI
+	themesWithUpdate := e.getThemesWithUpdate(site.RootPath, site.OwnerUser)
+
+	// Cập nhật danh sách themes (UPSERT dựa trên site_id và slug)
+	for _, t := range site.Themes {
+		hasUpdate := 0
+		if themesWithUpdate[t.Slug] {
+			hasUpdate = 1
+		}
+		tQuery := `
+		INSERT INTO site_themes (site_id, slug, name, version, status, has_update)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(site_id, slug) DO UPDATE SET
+			name = excluded.name,
+			version = excluded.version,
+			status = excluded.status,
+			has_update = excluded.has_update;
+		`
+		_, _ = e.db.Exec(tQuery, siteID, t.Slug, t.Name, t.Version, t.Status, hasUpdate)
+	}
+
+	for slug, hasUpd := range themesWithUpdate {
+		if hasUpd {
+			_, _ = e.db.Exec("UPDATE site_themes SET has_update = 1 WHERE site_id = ? AND slug = ?", siteID, slug)
+		}
+	}
+
 	return nil
+}
+
+// getThemesWithUpdate dùng WP-CLI để lấy danh sách theme có bản cập nhật
+func (e *DiscoveryEngine) getThemesWithUpdate(rootPath, ownerUser string) map[string]bool {
+	result := make(map[string]bool)
+	if ownerUser == "" {
+		ownerUser = "www-data"
+	}
+
+	slugs, err := e.wpcli.GetThemesWithUpdates(rootPath, ownerUser)
+	if err != nil {
+		return result
+	}
+
+	for _, slug := range slugs {
+		if slug != "" {
+			result[slug] = true
+		}
+	}
+	return result
 }
 
 // getPluginsWithUpdate dùng WP-CLI để lấy danh sách plugin có bản cập nhật

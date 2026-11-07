@@ -47,6 +47,8 @@ func (h *WPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/sites/{id}/toggle-cache", h.HandleToggleFastCGICache)
 	mux.HandleFunc("POST /api/sites/{id}/core-update", h.HandleCoreUpdate)
 	mux.HandleFunc("POST /api/sites/{id}/issue-ssl", h.HandleIssueSSL)
+	mux.HandleFunc("POST /api/sites/{id}/themes/{slug}/update", h.HandleUpdateTheme)
+	mux.HandleFunc("POST /api/sites/{id}/themes/update-all", h.HandleUpdateAllThemes)
 }
 
 func (h *WPHandler) HandleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -512,5 +514,60 @@ func (h *WPHandler) HandleIssueSSL(w http.ResponseWriter, r *http.Request) {
 		"domain":     domain,
 		"ssl_active": true,
 		"log":        string(out),
+	})
+}
+
+// HandleUpdateTheme cập nhật 1 theme cụ thể
+func (h *WPHandler) HandleUpdateTheme(w http.ResponseWriter, r *http.Request) {
+	siteID, slug, rootPath, ownerUser, err := h.getSiteInfo(r)
+	if err != nil {
+		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
+		return
+	}
+
+	if err := h.wpcli.UpdateTheme(rootPath, ownerUser, slug); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	_, _ = h.db.Exec("UPDATE site_themes SET has_update = 0 WHERE site_id = ? AND slug = ?", siteID, slug)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Cập nhật theme thành công",
+		"slug":    slug,
+	})
+}
+
+// HandleUpdateAllThemes cập nhật tất cả theme của một website
+func (h *WPHandler) HandleUpdateAllThemes(w http.ResponseWriter, r *http.Request) {
+	siteID, _, rootPath, ownerUser, err := h.getSiteInfo(r)
+	if err != nil {
+		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
+		return
+	}
+
+	if err := h.wpcli.UpdateAllThemes(rootPath, ownerUser); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	_, _ = h.db.Exec("UPDATE site_themes SET has_update = 0 WHERE site_id = ?", siteID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Đã cập nhật tất cả theme của website thành công",
 	})
 }

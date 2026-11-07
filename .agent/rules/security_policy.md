@@ -21,3 +21,4 @@
   3. Quét file tên webshell phổ biến ở thư mục gốc (`wso.php`, `c99.php`).
   4. Quét regex pattern backdoor/webshell nguy hiểm (`eval(base64_decode)`, `gzinflate`, `assert`).
 - **SSL Let's Encrypt**: Tự động cấu hình Certbot chuyển hướng toàn bộ traffic sang HTTPS.
+

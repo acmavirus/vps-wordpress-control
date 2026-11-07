@@ -15,3 +15,4 @@ globs:
    - Xác nhận `APP_PORT` nằm trong dải `9000-9999`.
    - Xác nhận `DATA_DIR` và `DB_NAME` hợp lệ.
 4. Báo cáo trạng thái sẵn sàng của dự án.
+

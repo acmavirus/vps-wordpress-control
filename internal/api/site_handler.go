@@ -53,11 +53,11 @@ func (h *SiteHandler) HandleListSites(w http.ResponseWriter, r *http.Request) {
 		s.id, s.domain, s.root_path, s.php_version, s.wp_version, 
 		s.owner_user, s.db_name, s.db_user, s.ssl_active, s.ssl_expires_at,
 		s.fastcgi_cache, s.is_discovered, s.status, s.created_at, s.updated_at,
-		COUNT(p.id) as total_plugins,
-		SUM(CASE WHEN p.has_update = 1 THEN 1 ELSE 0 END) as pending_updates
+		(SELECT COUNT(id) FROM site_plugins WHERE site_id = s.id) as total_plugins,
+		(SELECT COUNT(id) FROM site_plugins WHERE site_id = s.id AND has_update = 1) as pending_updates,
+		(SELECT COUNT(id) FROM site_themes WHERE site_id = s.id) as total_themes,
+		(SELECT COUNT(id) FROM site_themes WHERE site_id = s.id AND has_update = 1) as theme_updates
 	FROM sites s
-	LEFT JOIN site_plugins p ON s.id = p.site_id
-	GROUP BY s.id
 	ORDER BY s.id DESC;
 	`
 
@@ -71,18 +71,24 @@ func (h *SiteHandler) HandleListSites(w http.ResponseWriter, r *http.Request) {
 	var sites []models.Site
 	for rows.Next() {
 		var s models.Site
-		var pendingUpdates sql.NullInt64
+		var pendingUpdates, totalThemes, themeUpdates sql.NullInt64
 		err := rows.Scan(
 			&s.ID, &s.Domain, &s.RootPath, &s.PHPVersion, &s.WPVersion,
 			&s.OwnerUser, &s.DBName, &s.DBUser, &s.SSLActive, &s.SSLExpiresAt,
 			&s.FastCGICache, &s.IsDiscovered, &s.Status, &s.CreatedAt, &s.UpdatedAt,
-			&s.TotalPlugins, &pendingUpdates,
+			&s.TotalPlugins, &pendingUpdates, &totalThemes, &themeUpdates,
 		)
 		if err != nil {
 			continue
 		}
 		if pendingUpdates.Valid {
 			s.PendingUpdates = int(pendingUpdates.Int64)
+		}
+		if totalThemes.Valid {
+			s.TotalThemes = int(totalThemes.Int64)
+		}
+		if themeUpdates.Valid {
+			s.ThemeUpdates = int(themeUpdates.Int64)
 		}
 		sites = append(sites, s)
 	}
@@ -144,11 +150,33 @@ func (h *SiteHandler) HandleGetSiteDetail(w http.ResponseWriter, r *http.Request
 		plugins = []models.Plugin{}
 	}
 
+	// Lấy danh sách themes
+	tRows, err := h.db.Query("SELECT id, slug, name, version, update_version, status, has_update FROM site_themes WHERE site_id = ?", id)
+	var themes []models.Theme
+	if err == nil {
+		defer tRows.Close()
+		for tRows.Next() {
+			var t models.Theme
+			var upVer sql.NullString
+			if err := tRows.Scan(&t.ID, &t.Slug, &t.Name, &t.Version, &upVer, &t.Status, &t.HasUpdate); err == nil {
+				if upVer.Valid {
+					t.UpdateVersion = upVer.String
+				}
+				t.SiteID = id
+				themes = append(themes, t)
+			}
+		}
+	}
+	if themes == nil {
+		themes = []models.Theme{}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
 		"site":    s,
 		"plugins": plugins,
+		"themes":  themes,
 	})
 }
 

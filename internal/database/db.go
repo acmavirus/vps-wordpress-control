@@ -75,6 +75,21 @@ func runMigrations(db *sql.DB) error {
 
 	CREATE INDEX IF NOT EXISTS idx_site_plugins_site_slug ON site_plugins(site_id, slug);
 
+	CREATE TABLE IF NOT EXISTS site_themes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		site_id INTEGER NOT NULL,
+		slug TEXT NOT NULL,
+		name TEXT,
+		version TEXT,
+		update_version TEXT,
+		status TEXT,
+		has_update INTEGER DEFAULT 0,
+		UNIQUE(site_id, slug),
+		FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_site_themes_site_slug ON site_themes(site_id, slug);
+
 	CREATE TABLE IF NOT EXISTS scan_results (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		site_id INTEGER NOT NULL,

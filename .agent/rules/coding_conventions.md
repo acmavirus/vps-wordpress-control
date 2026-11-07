@@ -32,3 +32,4 @@
   3. Tạo git tag: `git tag v1.0.x`.
   4. Push nhánh main và tag: `git push origin main ; git push origin v1.0.x`.
   5. GitHub Actions sẽ tự động biên dịch nhị phân cho cả `amd64` và `arm64`.
+

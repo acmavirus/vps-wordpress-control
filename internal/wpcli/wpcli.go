@@ -82,6 +82,36 @@ func (w *WPCLI) UpdateAllPlugins(sitePath, ownerUser string) error {
 	return err
 }
 
+// UpdateTheme cập nhật 1 theme cụ thể
+func (w *WPCLI) UpdateTheme(sitePath, ownerUser, slug string) error {
+	_, err := w.Run(sitePath, ownerUser, "theme", "update", slug)
+	return err
+}
+
+// UpdateAllThemes cập nhật tất cả theme của website
+func (w *WPCLI) UpdateAllThemes(sitePath, ownerUser string) error {
+	_, err := w.Run(sitePath, ownerUser, "theme", "update", "--all")
+	return err
+}
+
+// GetThemesWithUpdates trả về danh sách slug theme có bản cập nhật mới
+func (w *WPCLI) GetThemesWithUpdates(sitePath, ownerUser string) ([]string, error) {
+	out, err := w.Run(sitePath, ownerUser, "theme", "list",
+		"--update=available", "--fields=name", "--format=csv", "--skip-plugins", "--skip-themes")
+	if err != nil {
+		return nil, err
+	}
+
+	var slugs []string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && line != "name" && line != "slug" {
+			slugs = append(slugs, line)
+		}
+	}
+	return slugs, nil
+}
+
 // TogglePlugin bật hoặc tắt 1 plugin (hữu ích để fix lỗi trắng trang WSOD)
 func (w *WPCLI) TogglePlugin(sitePath, ownerUser, slug string, activate bool) error {
 	action := "deactivate"
