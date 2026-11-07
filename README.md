@@ -40,6 +40,17 @@ Sau khi cài đặt hoàn tất, script sẽ cung cấp:
 
 ---
 
+## 🔄 Cập Nhật Phiên Bản Mới (1-Click Update)
+
+Khi có bản cập nhật mới, chỉ cần chạy đúng **1 dòng lệnh** duy nhất trên VPS:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/acmavirus/vps-wordpress-control/main/update.sh | sudo bash
+```
+*(Script sẽ tự động tải binary mới nhất theo cấu trúc CPU của VPS, ghi đè và khởi động lại dịch vụ `wp-control` trong vòng 3 giây mà không làm mất cấu hình `.env` hay cơ sở dữ liệu)*
+
+---
+
 ## 🛠 Quản Lý Dịch Vụ Trên VPS
 
 ```bash
