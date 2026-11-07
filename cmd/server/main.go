@@ -39,9 +39,16 @@ func main() {
 	// Khởi tạo HTTP Router sử dụng Go 1.22+ enhanced routing
 	mux := http.NewServeMux()
 
-	// 1. Phục vụ Web Dashboard (Embedded HTML UI)
-	mux.Handle("GET /{$}", http.FileServer(http.FS(web.Dist)))
-	mux.Handle("GET /index.html", http.FileServer(http.FS(web.Dist)))
+	// 1. Phục vụ Web Dashboard (Embedded HTML UI với No-Cache header để trình duyệt luôn nhận bản mới)
+	fileServer := http.FileServer(http.FS(web.Dist))
+	noCacheHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		fileServer.ServeHTTP(w, r)
+	})
+	mux.Handle("GET /{$}", noCacheHandler)
+	mux.Handle("GET /index.html", noCacheHandler)
 
 	// 2. Đăng ký các module API
 	authHandler := api.NewAuthHandler(cfg)
@@ -55,6 +62,9 @@ func main() {
 
 	wpHandler := api.NewWPHandler(cfg, db.DB)
 	wpHandler.RegisterRoutes(mux)
+
+	backupHandler := api.NewBackupHandler(cfg, db.DB)
+	backupHandler.RegisterRoutes(mux)
 
 	// 3. API Health check
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
