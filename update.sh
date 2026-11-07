@@ -33,13 +33,28 @@ case $ARCH in
 esac
 
 TMP_FILE=$(mktemp /tmp/wp-control-update.XXXXXX.tar.gz)
-DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/wp-control-linux-${BIN_ARCH}.tar.gz"
+# Tải từ tag cụ thể nếu có truyền đối số hoặc tự động tìm tag mới nhất từ API để tránh CDN cache của releases/latest
+TARGET_TAG="${1:-}"
+if [ -z "$TARGET_TAG" ]; then
+    TARGET_TAG=$(curl -sSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | head -n 1 | cut -d '"' -f 4)
+fi
 
-echo -e "${GREEN}[1/3] Tải bản phát hành mới nhất (${BIN_ARCH})...${NC}"
+if [ -n "$TARGET_TAG" ]; then
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${TARGET_TAG}/wp-control-linux-${BIN_ARCH}.tar.gz"
+    echo -e "${GREEN}[1/3] Tải phiên bản ${TARGET_TAG} (${BIN_ARCH})...${NC}"
+else
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/wp-control-linux-${BIN_ARCH}.tar.gz"
+    echo -e "${GREEN}[1/3] Tải bản phát hành mới nhất (${BIN_ARCH})...${NC}"
+fi
+
 if ! curl -sSLf "${DOWNLOAD_URL}" -o "${TMP_FILE}"; then
-    echo -e "${RED}[Lỗi] Không thể tải bản cập nhật từ GitHub. Vui lòng thử lại sau.${NC}"
-    rm -f "${TMP_FILE}"
-    exit 1
+    echo -e "${YELLOW}[Cảnh báo] Thử fallback về releases/latest...${NC}"
+    FALLBACK_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/wp-control-linux-${BIN_ARCH}.tar.gz"
+    if ! curl -sSLf "${FALLBACK_URL}" -o "${TMP_FILE}"; then
+        echo -e "${RED}[Lỗi] Không thể tải bản cập nhật từ GitHub. Vui lòng thử lại sau.${NC}"
+        rm -f "${TMP_FILE}"
+        exit 1
+    fi
 fi
 
 echo -e "${GREEN}[2/3] Dừng dịch vụ và thay thế binary...${NC}"

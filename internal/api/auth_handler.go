@@ -174,7 +174,7 @@ func (h *AuthHandler) AuthMiddleware(next http.Handler) http.Handler {
 		path := r.URL.Path
 
 		// Bỏ qua xác thực cho các route công khai
-		if path == "/" || path == "/index.html" || path == "/api/health" || path == "/api/auth/login" {
+		if path == "/" || path == "/index.html" || path == "/favicon.ico" || path == "/api/health" || path == "/api/auth/login" {
 			next.ServeHTTP(w, r)
 			return
 		}

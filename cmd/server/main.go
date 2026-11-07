@@ -50,6 +50,11 @@ func main() {
 	})
 	mux.Handle("GET /{$}", noCacheHandler)
 	mux.Handle("GET /index.html", noCacheHandler)
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.WriteHeader(http.StatusOK)
+	})
 
 	// 2. Đăng ký các module API
 	authHandler := api.NewAuthHandler(cfg)
