@@ -197,6 +197,16 @@ func (e *DiscoveryEngine) validateAndEnrichWordPress(site *DiscoveredSite) bool 
 		}
 	}
 
+	// Tự động nhận diện user sở hữu thư mục gốc/file wp-config.php trên hệ thống
+	if fi, err := os.Stat(wpConfigPath); err == nil {
+		site.OwnerUser = getOSFileOwner(fi)
+	} else if fi, err := os.Stat(site.RootPath); err == nil {
+		site.OwnerUser = getOSFileOwner(fi)
+	}
+	if site.OwnerUser == "" {
+		site.OwnerUser = "www-data"
+	}
+
 	// Quét danh sách plugin từ thư mục wp-content/plugins
 	pluginsDir := filepath.Join(site.RootPath, "wp-content", "plugins")
 	site.Plugins = e.scanPluginsDirectory(pluginsDir)
@@ -290,10 +300,11 @@ func extractPluginHeader(filePath string) (string, string) {
 func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 	query := `
 	INSERT INTO sites (
-		domain, root_path, wp_version, db_name, db_user, ssl_active, is_discovered, status, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP)
+		domain, root_path, owner_user, wp_version, db_name, db_user, ssl_active, is_discovered, status, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP)
 	ON CONFLICT(domain) DO UPDATE SET
 		root_path = excluded.root_path,
+		owner_user = excluded.owner_user,
 		wp_version = excluded.wp_version,
 		db_name = excluded.db_name,
 		db_user = excluded.db_user,
@@ -302,7 +313,7 @@ func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 	RETURNING id;
 	`
 	var siteID int64
-	err := e.db.QueryRow(query, site.Domain, site.RootPath, site.WPVersion, site.DBName, site.DBUser, site.SSLActive).Scan(&siteID)
+	err := e.db.QueryRow(query, site.Domain, site.RootPath, site.OwnerUser, site.WPVersion, site.DBName, site.DBUser, site.SSLActive).Scan(&siteID)
 	if err != nil {
 		return err
 	}

@@ -25,18 +25,15 @@ func NewWPCLI() *WPCLI {
 
 // Run thực thi lệnh wp-cli với đường dẫn site và phân quyền an toàn
 func (w *WPCLI) Run(sitePath string, ownerUser string, args ...string) (string, error) {
-	if ownerUser == "" {
-		ownerUser = "www-data"
-	}
-
-	fullArgs := append([]string{"--path=" + sitePath, "--allow-root"}, args...)
-
 	var cmd *exec.Cmd
-	// Nếu chạy dưới quyền root trên Linux, ưu tiên chạy dưới quyền ownerUser để đảm bảo phân quyền file
-	if os.Geteuid() == 0 && ownerUser != "root" {
+	// Nếu đang chạy dưới quyền root trên Linux và có user sở hữu khác root:
+	// Chạy dưới quyền ownerUser (không dùng --allow-root)
+	if os.Geteuid() == 0 && ownerUser != "" && ownerUser != "root" {
 		sudoArgs := append([]string{"-u", ownerUser, w.binPath, "--path=" + sitePath}, args...)
 		cmd = exec.Command("sudo", sudoArgs...)
 	} else {
+		// Ngược lại chạy trực tiếp với --allow-root
+		fullArgs := append([]string{"--path=" + sitePath, "--allow-root"}, args...)
 		cmd = exec.Command(w.binPath, fullArgs...)
 	}
 
@@ -46,8 +43,28 @@ func (w *WPCLI) Run(sitePath string, ownerUser string, args ...string) (string, 
 
 	err := cmd.Run()
 	if err != nil {
+		// FALLBACK: Nếu lệnh chạy dưới quyền user thất bại do Permission Denied (ví dụ user không đủ quyền ghi file cũ của root),
+		// tự động thử lại trực tiếp với quyền root (--allow-root) để hoàn tất tác vụ (như update-core, plugin update).
+		if os.Geteuid() == 0 && ownerUser != "" && ownerUser != "root" {
+			fallbackArgs := append([]string{"--path=" + sitePath, "--allow-root"}, args...)
+			fallbackCmd := exec.Command(w.binPath, fallbackArgs...)
+			var fbStdout, fbStderr bytes.Buffer
+			fallbackCmd.Stdout = &fbStdout
+			fallbackCmd.Stderr = &fbStderr
+			if fbErr := fallbackCmd.Run(); fbErr == nil {
+				// Sửa lại quyền toàn bộ thư mục về đúng user sở hữu để tránh lỗi quyền cho các lần sau
+				_ = exec.Command("chown", "-R", ownerUser+":"+ownerUser, sitePath).Run()
+				return strings.TrimSpace(fbStdout.String()), nil
+			}
+		}
 		return stdout.String(), fmt.Errorf("lỗi thực thi wp-cli: %v | stderr: %s", err, stderr.String())
 	}
+
+	// Đảm bảo sau khi cập nhật thành công, phân quyền vẫn thuộc ownerUser nếu có
+	if os.Geteuid() == 0 && ownerUser != "" && ownerUser != "root" {
+		_ = exec.Command("chown", "-R", ownerUser+":"+ownerUser, sitePath).Run()
+	}
+
 	return strings.TrimSpace(stdout.String()), nil
 }
 

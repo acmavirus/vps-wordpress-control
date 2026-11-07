@@ -59,3 +59,4 @@ else
     echo -e "${YELLOW}Dịch vụ chưa chạy, thử restart...${NC}"
     systemctl restart "${SERVICE_NAME}"
 fi
+
