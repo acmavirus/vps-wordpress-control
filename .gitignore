@@ -37,7 +37,7 @@ wp-control-linux-*
 tests/mock_data/
 
 # 6. IDE, Agent & Hệ điều hành
-.agent/
+!.agent/
 .idea/
 .vscode/
 *.swp
