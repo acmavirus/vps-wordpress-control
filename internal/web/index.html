@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPS WordPress Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="bg-slate-800/80 border-b border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/20">
+          <i class="fa-brands fa-wordpress"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
+          <span class="text-xs text-slate-400">Lightweight Dedicated Panel</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="scanVPS()" id="btn-scan-vps" class="px-3.5 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md border border-slate-600 transition flex items-center space-x-2">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Quét lại VPS</span>
+        </button>
+        <button onclick="openCreateModal()" class="px-3.5 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-md shadow transition flex items-center space-x-2">
+          <i class="fa-solid fa-plus"></i>
+          <span>Thêm Website</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+        <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center text-xl">
+          <i class="fa-solid fa-globe"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
+          <p class="text-2xl font-bold" id="stat-total-sites">0</p>
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+        <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-lg flex items-center justify-center text-xl">
+          <i class="fa-solid fa-puzzle-piece"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
+          <p class="text-2xl font-bold" id="stat-total-updates">0</p>
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
+          <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Website List -->
+    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
+      <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
+        <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
+            <tr>
+              <th class="px-5 py-3">Tên miền</th>
+              <th class="px-5 py-3">Phiên bản</th>
+              <th class="px-5 py-3">Database</th>
+              <th class="px-5 py-3">SSL</th>
+              <th class="px-5 py-3">Plugins</th>
+              <th class="px-5 py-3 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="sites-table-body" class="divide-y divide-slate-700/50">
+            <!-- Render via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Tạo Website Mới -->
+  <div id="modal-create" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-white">Thêm Website WordPress Mới</h3>
+        <button onclick="closeCreateModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-create-site" onsubmit="handleCreateSite(event)" class="p-5 space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Tên miền (Domain)</label>
+          <input type="text" id="create-domain" required placeholder="example.com" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Tiêu đề Website</label>
+          <input type="text" id="create-title" placeholder="My WordPress Site" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Admin Username</label>
+            <input type="text" id="create-user" value="admin" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">PHP Version</label>
+            <select id="create-php" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+              <option value="8.2" selected>PHP 8.2</option>
+              <option value="8.3">PHP 8.3</option>
+              <option value="8.1">PHP 8.1</option>
+              <option value="7.4">PHP 7.4</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Admin Password (để trống để tự sinh)</label>
+          <input type="password" id="create-pass" placeholder="••••••••••••" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex items-center space-x-2 pt-1">
+          <input type="checkbox" id="create-ssl" class="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded">
+          <label for="create-ssl" class="text-slate-300">Tự động cấp chứng chỉ Let's Encrypt SSL</label>
+        </div>
+        <div class="pt-3 flex justify-end space-x-2">
+          <button type="button" onclick="closeCreateModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md">Hủy</button>
+          <button type="submit" id="btn-submit-create" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">Bắt đầu tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Kết Quả Quét Mã Độc -->
+  <div id="modal-scan" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-shield-virus text-indigo-400"></i>
+          <span id="scan-modal-title">Kết quả quét mã độc</span>
+        </h3>
+        <button onclick="closeScanModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 max-h-[60vh] overflow-y-auto" id="scan-modal-content">
+        <!-- Render findings -->
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
+        <button onclick="closeScanModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer Chi tiết Plugins -->
+  <div id="drawer-plugins" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-800 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+      <h3 class="text-sm font-semibold text-white" id="drawer-title">Quản lý Plugins</h3>
+      <button onclick="closePluginDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-plugin-list">
+      <!-- Render plugin list -->
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs flex items-center space-x-2 transform translate-y-20 opacity-0 transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg">Thông báo</span>
+  </div>
+
+  <script>
+    let currentSites = [];
+
+    async function loadSites() {
+      try {
+        const res = await fetch('/api/sites');
+        const data = await res.json();
+        currentSites = data.data || [];
+        renderSites(currentSites);
+      } catch (err) {
+        showToast('Không thể tải danh sách website', 'error');
+      }
+    }
+
+    function renderSites(sites) {
+      const tbody = document.getElementById('sites-table-body');
+      tbody.innerHTML = '';
+      
+      let totalUpdates = 0;
+      document.getElementById('stat-total-sites').innerText = sites.length;
+      document.getElementById('table-subtitle').innerText = `Tìm thấy ${sites.length} website`;
+
+      if (sites.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-5 py-8 text-center text-slate-500">Chưa có website nào. Nhấn "Quét lại VPS" hoặc "+ Thêm Website" để bắt đầu.</td></tr>`;
+        return;
+      }
+
+      sites.forEach(s => {
+        totalUpdates += (s.pending_updates || 0);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-700/30 transition';
+        tr.innerHTML = `
+          <td class="px-5 py-3.5">
+            <div class="font-medium text-white">${s.domain}</div>
+            <div class="text-[11px] text-slate-400 font-mono">${s.root_path}</div>
+          </td>
+          <td class="px-5 py-3.5">
+            <span class="inline-block px-2 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300">WP ${s.wp_version || 'N/A'}</span>
+            <span class="inline-block px-2 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300 ml-1">PHP ${s.php_version}</span>
+          </td>
+          <td class="px-5 py-3.5 font-mono text-[11px] text-slate-400">${s.db_name || '-'}</td>
+          <td class="px-5 py-3.5">
+            ${s.ssl_active 
+              ? '<span class="inline-flex items-center text-emerald-400 text-[11px]"><i class="fa-solid fa-lock mr-1"></i> HTTPS</span>' 
+              : '<span class="inline-flex items-center text-slate-400 text-[11px]">HTTP</span>'}
+          </td>
+          <td class="px-5 py-3.5">
+            <button onclick="openPluginDrawer(${s.id})" class="text-indigo-400 hover:text-indigo-300 underline font-medium">
+              ${s.total_plugins || 0} plugins
+            </button>
+            ${s.pending_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.pending_updates} update</span>` : ''}
+          </td>
+          <td class="px-5 py-3.5 text-right space-x-1.5">
+            <button onclick="magicLogin(${s.id})" title="Đăng nhập 1-click vào wp-admin" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </button>
+            <button onclick="scanSiteMalware(${s.id})" title="Quét mã độc 3 lớp" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-amber-400 rounded">
+              <i class="fa-solid fa-shield-virus"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('stat-total-updates').innerText = totalUpdates;
+    }
+
+    async function scanVPS() {
+      const btn = document.getElementById('btn-scan-vps');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Đang quét...</span>';
+      try {
+        const res = await fetch('/api/discovery/scan', { method: 'POST' });
+        const data = await res.json();
+        showToast(`Đã đồng bộ ${data.sites_discovered} website!`, 'success');
+        loadSites();
+      } catch (err) {
+        showToast('Lỗi khi quét VPS', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> <span>Quét lại VPS</span>';
+      }
+    }
+
+    async function scanSiteMalware(id) {
+      showToast('Đang quét mã độc 3 tầng...', 'info');
+      try {
+        const res = await fetch(`/api/sites/${id}/scan`, { method: 'POST' });
+        const data = await res.json();
+        openScanModal(data);
+      } catch (err) {
+        showToast('Lỗi khi quét mã độc', 'error');
+      }
+    }
+
+    function openScanModal(data) {
+      document.getElementById('scan-modal-title').innerText = `Kết quả quét: ${data.domain}`;
+      const container = document.getElementById('scan-modal-content');
+      if (data.total_warnings === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-4xl mb-3"></i>
+            <h4 class="font-semibold text-white">Website hoàn toàn sạch sẽ!</h4>
+            <p class="text-xs text-slate-400 mt-1">Không phát hiện file PHP trong thư mục uploads, không có webshell.</p>
+          </div>
+        `;
+      } else {
+        let html = `<div class="space-y-3">`;
+        data.findings.forEach(f => {
+          const isCritical = f.severity === 'critical';
+          html += `
+            <div class="p-3 bg-slate-900/80 border ${isCritical ? 'border-red-500/50' : 'border-amber-500/50'} rounded-lg">
+              <div class="flex items-center justify-between mb-1">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCritical ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'} uppercase">
+                  ${f.severity}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">${f.scan_type}</span>
+              </div>
+              <p class="text-xs font-medium text-slate-200">${f.issue_description}</p>
+              <p class="text-[11px] text-slate-400 font-mono mt-1 break-all">${f.file_path}</p>
+            </div>
+          `;
+        });
+        html += `</div>`;
+        container.innerHTML = html;
+      }
+      document.getElementById('modal-scan').classList.remove('hidden');
+    }
+
+    function closeScanModal() {
+      document.getElementById('modal-scan').classList.add('hidden');
+    }
+
+    async function magicLogin(id) {
+      try {
+        const res = await fetch(`/api/sites/${id}/magic-login`);
+        const data = await res.json();
+        if (data.login_url) {
+          window.open(data.login_url, '_blank');
+        } else {
+          showToast('Không thể lấy link đăng nhập', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi yêu cầu Magic Login', 'error');
+      }
+    }
+
+    async function openPluginDrawer(siteId) {
+      try {
+        const res = await fetch(`/api/sites/${siteId}`);
+        const data = await res.json();
+        document.getElementById('drawer-title').innerText = `Plugins: ${data.site.domain}`;
+        const list = document.getElementById('drawer-plugin-list');
+        list.innerHTML = '';
+
+        if (!data.plugins || data.plugins.length === 0) {
+          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">Không có plugin nào.</div>`;
+        } else {
+          data.plugins.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'py-3 flex items-center justify-between';
+            div.innerHTML = `
+              <div>
+                <p class="font-medium text-white text-xs">${p.name}</p>
+                <p class="text-[10px] text-slate-400">Phiên bản: ${p.version}</p>
+              </div>
+              <div class="space-x-1.5">
+                <button onclick="updatePlugin(${siteId}, '${p.slug}')" class="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
+                  Update
+                </button>
+              </div>
+            `;
+            list.appendChild(div);
+          });
+        }
+        document.getElementById('drawer-plugins').classList.remove('translate-x-full');
+      } catch (err) {
+        showToast('Lỗi tải danh sách plugin', 'error');
+      }
+    }
+
+    function closePluginDrawer() {
+      document.getElementById('drawer-plugins').classList.add('translate-x-full');
+    }
+
+    async function updatePlugin(siteId, slug) {
+      showToast(`Đang cập nhật plugin ${slug}...`, 'info');
+      try {
+        const res = await fetch(`/api/sites/${siteId}/plugins/${slug}/update`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(`Cập nhật ${slug} thành công!`, 'success');
+          openPluginDrawer(siteId);
+          loadSites();
+        } else {
+          showToast(data.error || 'Cập nhật thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gửi yêu cầu cập nhật', 'error');
+      }
+    }
+
+    function openCreateModal() {
+      document.getElementById('modal-create').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('modal-create').classList.add('hidden');
+    }
+
+    async function handleCreateSite(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-create');
+      btn.innerText = 'Đang khởi tạo...';
+      btn.disabled = true;
+
+      const payload = {
+        domain: document.getElementById('create-domain').value,
+        site_title: document.getElementById('create-title').value,
+        admin_user: document.getElementById('create-user').value,
+        admin_password: document.getElementById('create-pass').value,
+        php_version: document.getElementById('create-php').value,
+        enable_ssl: document.getElementById('create-ssl').checked
+      };
+
+      try {
+        const res = await fetch('/api/sites/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(`Đã tạo thành công ${data.domain}!`, 'success');
+          closeCreateModal();
+          loadSites();
+        } else {
+          showToast(data.error || 'Tạo website thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi máy chủ', 'error');
+      } finally {
+        btn.innerText = 'Bắt đầu tạo';
+        btn.disabled = false;
+      }
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = msg;
+      if (type === 'error') {
+        toastIcon.className = 'fa-solid fa-circle-xmark text-red-400';
+      } else if (type === 'info') {
+        toastIcon.className = 'fa-solid fa-spinner fa-spin text-indigo-400';
+      } else {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    // Load initial
+    loadSites();
+  </script>
+</body>
+</html>

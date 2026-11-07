@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wp_control_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-9090}:${APP_PORT:-9090}"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+    working_dir: /app
+    command: ["sh", "-c", "go run cmd/server/main.go"]
+

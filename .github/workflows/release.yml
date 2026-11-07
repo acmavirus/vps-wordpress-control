@@ -1,0 +1,61 @@
+name: Build and Release Binary
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Multi-Arch Linux Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            pkg_name: wp-control-linux-amd64
+          - goos: linux
+            goarch: arm64
+            pkg_name: wp-control-linux-arm64
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install Cross-Compile Dependencies
+        if: matrix.goarch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build Binary (Stripped Symbols - Chống Lộ Mã Nguồn)
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+          CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
+        run: |
+          mkdir -p dist
+          # -s -w loại bỏ bảng ký hiệu debug và DWARF, giảm 50% dung lượng và chống dịch ngược
+          go build -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o dist/wp-control cmd/server/main.go
+          
+          # Đóng gói tar.gz
+          tar -czf "${{ matrix.pkg_name }}.tar.gz" -C dist wp-control
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.pkg_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

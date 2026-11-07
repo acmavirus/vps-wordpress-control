@@ -1,0 +1,14 @@
+FROM golang:1.23-alpine
+
+RUN apk add --no-cache git bash curl build-base
+
+WORKDIR /app
+
+# Cache dependencies
+COPY go.mod go.sum* ./
+RUN go mod download || true
+
+EXPOSE 9090
+
+CMD ["go", "run", "cmd/server/main.go"]
+

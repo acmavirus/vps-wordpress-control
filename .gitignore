@@ -1,0 +1,52 @@
+# ============================================
+# BẢO MẬT: TUYỆT ĐỐI KHÔNG COMMIT LÊN GITHUB MỞ
+# ============================================
+
+# 1. File chứa Credentials, Mật khẩu, Secret Keys
+.env
+*.env
+!.env.example
+*.pem
+*.key
+*.crt
+
+# 2. Database SQLite nội bộ và Thư mục Dữ liệu
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# 3. Thư mục Logs và Cache
+logs/
+*.log
+
+# 4. Binary compiled & Build artifacts
+bin/
+wp-control
+wp-control-linux-*
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 5. Dữ liệu Test & Mock data nhạy cảm
+tests/mock_data/
+
+# 6. IDE, Agent & Hệ điều hành
+.agent/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 7. Backup files
+*.bak
+*.backup
+*.tmp
+
