@@ -617,75 +617,156 @@
       }
     }
 
+    // ==================== LOCAL STEPPED TASK MODAL ====================
+    // Mở popup modal với tiến trình từng bước cho các tác vụ tuần tự
+    function openStepTaskModal(title, initialMsg) {
+      document.getElementById('job-modal-title').innerText = title;
+      document.getElementById('job-modal-icon').className = 'fa-solid fa-spinner fa-spin text-indigo-400';
+      document.getElementById('job-progress-bar').style.width = '0%';
+      document.getElementById('job-progress-label').innerText = '0%';
+      document.getElementById('job-progress-msg').innerText = initialMsg || 'Đang chuẩn bị...';
+      document.getElementById('btn-close-job').classList.add('hidden');
+      document.getElementById('modal-job').classList.remove('hidden');
+
+      if (activeJobEventSource) {
+        activeJobEventSource.close();
+        activeJobEventSource = null;
+      }
+    }
+
+    function updateStepTaskProgress(current, total, msg) {
+      const pct = Math.round((current / total) * 100);
+      document.getElementById('job-progress-bar').style.width = pct + '%';
+      document.getElementById('job-progress-label').innerText = `${pct}% (${current}/${total})`;
+      if (msg) document.getElementById('job-progress-msg').innerText = msg;
+    }
+
+    function completeStepTaskModal(title, msg, isSuccess = true) {
+      const icon = document.getElementById('job-modal-icon');
+      if (isSuccess) {
+        icon.className = 'fa-solid fa-circle-check text-emerald-400';
+        document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+        document.getElementById('job-progress-bar').style.width = '100%';
+        document.getElementById('job-progress-label').innerText = '100%';
+      } else {
+        icon.className = 'fa-solid fa-circle-xmark text-red-400';
+        document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+      }
+      if (msg) document.getElementById('job-progress-msg').innerText = msg;
+      document.getElementById('btn-close-job').classList.remove('hidden');
+    }
+
     // ==================== CORE UPDATE ====================
     async function coreUpdate(siteId, domain) {
-      if (!confirm(`Cập nhật WordPress Core của "${domain}"?\nQuá trình có thể mất vài phút.`)) return;
-      showToast(`Đang cập nhật Core WP cho ${domain}...`, 'info');
+      openStepTaskModal(`Cập nhật WP Core: ${domain}`, `Đang tải và cập nhật phiên bản WordPress Core mới nhất cho ${domain}...`);
+      updateStepTaskProgress(1, 3, `Đang chạy wp core update cho ${domain}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/core-update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(data.message, 'success');
+          updateStepTaskProgress(3, 3, data.message || `Đã cập nhật WordPress Core thành công!`);
+          completeStepTaskModal(`Cập nhật WP Core: ${domain}`, data.message || `Đã nâng cấp phiên bản ${data.new_version || ''} thành công!`, true);
           loadSites();
         } else {
-          showToast(data.error || 'Cập nhật Core thất bại', 'error');
+          completeStepTaskModal(`Cập nhật WP Core: ${domain}`, data.error || 'Cập nhật Core thất bại', false);
         }
       } catch (err) {
-        showToast('Lỗi khi cập nhật Core', 'error');
+        completeStepTaskModal(`Cập nhật WP Core: ${domain}`, 'Lỗi kết nối khi gửi lệnh cập nhật Core', false);
       }
     }
 
     async function bulkCoreUpdateSelected() {
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
-      if (!confirm(`Bạn có chắc muốn cập nhật WordPress Core cho ${ids.length} website đã chọn?`)) return;
+
+      openStepTaskModal('Cập nhật WordPress Core Hàng Loạt', `Bắt đầu cập nhật WP Core cho ${ids.length} website đã chọn...`);
 
       let successCount = 0;
-      showToast(`Bắt đầu cập nhật WP Core cho ${ids.length} website...`, 'info');
-      for (const id of ids) {
+      let failedList = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const site = currentSites.find(s => s.id === id);
+        const domain = site ? site.domain : `Site #${id}`;
+
+        updateStepTaskProgress(i, ids.length, `Đang cập nhật [${i + 1}/${ids.length}]: ${domain}...`);
+
         try {
           const res = await apiFetch(`/api/sites/${id}/core-update`, { method: 'POST' });
           const data = await res.json();
-          if (data.status === 'success') successCount++;
-        } catch (e) {}
+          if (data.status === 'success') {
+            successCount++;
+          } else {
+            failedList.push(`${domain}: ${data.error || 'Thất bại'}`);
+          }
+        } catch (e) {
+          failedList.push(`${domain}: Lỗi kết nối`);
+        }
       }
-      showToast(`Hoàn tất cập nhật WP Core cho ${successCount}/${ids.length} website!`, 'success');
+
+      updateStepTaskProgress(ids.length, ids.length, 'Hoàn thành!');
+      let resultMsg = `Hoàn tất nâng cấp WP Core! Thành công: ${successCount}/${ids.length} website.`;
+      if (failedList.length > 0) {
+        resultMsg += `\nLỗi: ` + failedList.join(', ');
+      }
+      completeStepTaskModal('Cập nhật WordPress Core Hàng Loạt', resultMsg, successCount > 0);
       loadSites();
     }
 
     // ==================== SSL MANAGEMENT ====================
     async function issueSSL(siteId, domain) {
-      if (!confirm(`Cấp chứng chỉ Let's Encrypt SSL cho "${domain}"?\nĐảm bảo tên miền đã trỏ đúng IP VPS.`)) return;
-      showToast(`Đang yêu cầu cấp SSL cho ${domain}...`, 'info');
+      openStepTaskModal(`Cài đặt SSL: ${domain}`, `Đang khởi tạo chứng chỉ Let's Encrypt SSL cho ${domain}...`);
+      updateStepTaskProgress(1, 2, `Đang xác thực tên miền và liên hệ máy chủ Let's Encrypt qua Certbot...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/issue-ssl`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(data.message, 'success');
+          updateStepTaskProgress(2, 2, `Cấp chứng chỉ và cấu hình Nginx HTTPS thành công!`);
+          completeStepTaskModal(`Cài đặt SSL: ${domain}`, data.message || `Đã kích hoạt HTTPS thành công cho ${domain}!`, true);
           loadSites();
         } else {
-          showToast(data.error || 'Cấp SSL thất bại', 'error');
+          completeStepTaskModal(`Cài đặt SSL: ${domain}`, data.error || 'Cấp SSL thất bại. Vui lòng kiểm tra lại DNS trỏ đúng IP VPS.', false);
         }
       } catch (err) {
-        showToast('Lỗi khi gửi yêu cầu cấp SSL', 'error');
+        completeStepTaskModal(`Cài đặt SSL: ${domain}`, 'Lỗi kết nối khi gửi yêu cầu cấp SSL', false);
       }
     }
 
     async function bulkIssueSSLSelected() {
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
-      if (!confirm(`Cấp chứng chỉ SSL cho ${ids.length} website đã chọn?`)) return;
+
+      openStepTaskModal('Cài Đặt SSL Hàng Loạt', `Bắt đầu cấp chứng chỉ Let's Encrypt cho ${ids.length} website...`);
 
       let successCount = 0;
-      showToast(`Đang cấp SSL cho ${ids.length} website...`, 'info');
-      for (const id of ids) {
+      let failedList = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const site = currentSites.find(s => s.id === id);
+        const domain = site ? site.domain : `Site #${id}`;
+
+        updateStepTaskProgress(i, ids.length, `Đang cấp SSL [${i + 1}/${ids.length}]: ${domain}...`);
+
         try {
           const res = await apiFetch(`/api/sites/${id}/issue-ssl`, { method: 'POST' });
           const data = await res.json();
-          if (data.status === 'success') successCount++;
-        } catch (e) {}
+          if (data.status === 'success') {
+            successCount++;
+          } else {
+            failedList.push(`${domain}: ${data.error || 'Lỗi certbot'}`);
+          }
+        } catch (e) {
+          failedList.push(`${domain}: Lỗi kết nối`);
+        }
       }
-      showToast(`Hoàn tất cấp SSL cho ${successCount}/${ids.length} website!`, 'success');
+
+      updateStepTaskProgress(ids.length, ids.length, 'Hoàn tất!');
+      let resultMsg = `Hoàn tất cấp SSL! Kích hoạt thành công: ${successCount}/${ids.length} website.`;
+      if (failedList.length > 0) {
+        resultMsg += `\nLỗi: ` + failedList.join(', ');
+      }
+      completeStepTaskModal('Cài Đặt SSL Hàng Loạt', resultMsg, successCount > 0);
       loadSites();
     }
 
@@ -933,43 +1014,60 @@
     async function submitChangePHP() {
       if (!currentPHPChangeSiteId) return;
       const newVersion = document.getElementById('select-php-version').value;
-      const btn = document.getElementById('btn-submit-php');
-      btn.innerText = 'Đang chuyển...';
-      btn.disabled = true;
+      const isArray = Array.isArray(currentPHPChangeSiteId);
+      const totalCount = isArray ? currentPHPChangeSiteId.length : 1;
+
+      closePHPModal();
+      openStepTaskModal(`Chuyển đổi phiên bản PHP`, `Bắt đầu cấu hình chuyển website sang PHP ${newVersion}...`);
 
       try {
-        if (Array.isArray(currentPHPChangeSiteId)) {
+        if (isArray) {
           let successCount = 0;
-          for (const sId of currentPHPChangeSiteId) {
+          let failedList = [];
+          for (let i = 0; i < currentPHPChangeSiteId.length; i++) {
+            const sId = currentPHPChangeSiteId[i];
+            const site = currentSites.find(s => s.id === sId);
+            const domain = site ? site.domain : `Site #${sId}`;
+
+            updateStepTaskProgress(i, totalCount, `Đang cập nhật Nginx socket cho ${domain} -> PHP ${newVersion}...`);
             try {
               const res = await apiFetch(`/api/sites/${sId}/change-php`, {
                 method: 'POST',
                 body: JSON.stringify({ php_version: newVersion })
               });
               const data = await res.json();
-              if (data.status === 'success') successCount++;
-            } catch (e) {}
+              if (data.status === 'success') {
+                successCount++;
+              } else {
+                failedList.push(`${domain}: ${data.error || 'Lỗi cấu hình'}`);
+              }
+            } catch (e) {
+              failedList.push(`${domain}: Lỗi kết nối`);
+            }
           }
-          showToast(`Đã chuyển PHP ${newVersion} cho ${successCount}/${currentPHPChangeSiteId.length} website!`, 'success');
+          updateStepTaskProgress(totalCount, totalCount, 'Hoàn thành!');
+          let msg = `Đã chuyển đổi sang PHP ${newVersion} thành công cho ${successCount}/${totalCount} website!`;
+          if (failedList.length > 0) {
+            msg += `\nLỗi: ` + failedList.join(', ');
+          }
+          completeStepTaskModal('Chuyển đổi phiên bản PHP', msg, successCount > 0);
         } else {
+          updateStepTaskProgress(1, 2, `Đang cập nhật socket FastCGI trong Nginx và reload dịch vụ...`);
           const res = await apiFetch(`/api/sites/${currentPHPChangeSiteId}/change-php`, {
             method: 'POST',
             body: JSON.stringify({ php_version: newVersion })
           });
           const data = await res.json();
           if (data.status === 'success') {
-            showToast(data.message, 'success');
+            updateStepTaskProgress(2, 2, 'Hoàn thành!');
+            completeStepTaskModal('Chuyển đổi phiên bản PHP', data.message || `Đã chuyển sang PHP ${newVersion} thành công!`, true);
           } else {
-            showToast(data.error || 'Đổi PHP thất bại', 'error');
+            completeStepTaskModal('Chuyển đổi phiên bản PHP', data.error || 'Đổi PHP thất bại', false);
           }
         }
-        closePHPModal();
         loadSites();
       } catch (err) {
-        showToast('Lỗi kết nối', 'error');
-      } finally {
-        btn.innerText = 'Lưu thay đổi';
-        btn.disabled = false;
+        completeStepTaskModal('Chuyển đổi phiên bản PHP', 'Lỗi kết nối khi gửi yêu cầu đổi PHP', false);
       }
     }
 
