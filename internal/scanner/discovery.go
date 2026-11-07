@@ -321,7 +321,7 @@ func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 	// Lấy danh sách slug plugin có update từ WP-CLI (tùy chọn — không làm hỏng nếu WP-CLI không có)
 	pluginsWithUpdate := e.getPluginsWithUpdate(site.RootPath, site.OwnerUser)
 
-	// Cập nhật danh sách plugins
+	// Cập nhật danh sách plugins (UPSERT dựa trên site_id và slug)
 	for _, p := range site.Plugins {
 		hasUpdate := 0
 		if pluginsWithUpdate[p.Slug] {
@@ -330,7 +330,11 @@ func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 		pQuery := `
 		INSERT INTO site_plugins (site_id, slug, name, version, status, has_update)
 		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO NOTHING;
+		ON CONFLICT(site_id, slug) DO UPDATE SET
+			name = excluded.name,
+			version = excluded.version,
+			status = excluded.status,
+			has_update = excluded.has_update;
 		`
 		_, _ = e.db.Exec(pQuery, siteID, p.Slug, p.Name, p.Version, p.Status, hasUpdate)
 	}

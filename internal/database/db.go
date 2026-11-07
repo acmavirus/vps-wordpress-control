@@ -69,8 +69,11 @@ func runMigrations(db *sql.DB) error {
 		update_version TEXT,
 		status TEXT,
 		has_update INTEGER DEFAULT 0,
+		UNIQUE(site_id, slug),
 		FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_site_plugins_site_slug ON site_plugins(site_id, slug);
 
 	CREATE TABLE IF NOT EXISTS scan_results (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +98,21 @@ func runMigrations(db *sql.DB) error {
 	`
 
 	_, err := db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Dọn dẹp dữ liệu trùng lặp cũ nếu có trong site_plugins
+	cleanupDuplicates := `
+	DELETE FROM site_plugins
+	WHERE id NOT IN (
+		SELECT MIN(id)
+		FROM site_plugins
+		GROUP BY site_id, slug
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS uq_site_plugins_site_slug ON site_plugins(site_id, slug);
+	`
+	_, _ = db.Exec(cleanupDuplicates)
+	return nil
 }
 
