@@ -44,6 +44,7 @@ func (h *WPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sites/{id}/magic-login", h.HandleMagicLogin)
 	mux.HandleFunc("POST /api/sites/{id}/change-php", h.HandleChangePHPVersion)
 	mux.HandleFunc("GET /api/system/php-versions", h.HandleGetPHPVersions)
+	mux.HandleFunc("POST /api/sites/{id}/toggle-cache", h.HandleToggleFastCGICache)
 }
 
 func (h *WPHandler) HandleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -341,6 +342,35 @@ func (h *WPHandler) HandleTogglePlugin(w http.ResponseWriter, r *http.Request) {
 		"status":     "success",
 		"slug":       slug,
 		"new_status": newStatus,
+	})
+}
+
+func (h *WPHandler) HandleToggleFastCGICache(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	siteID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error": "ID không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	var currentCache int
+	err = h.db.QueryRow("SELECT fastcgi_cache FROM sites WHERE id = ?", siteID).Scan(&currentCache)
+	if err != nil {
+		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
+		return
+	}
+
+	newCache := 1
+	if currentCache == 1 {
+		newCache = 0
+	}
+
+	_, _ = h.db.Exec("UPDATE sites SET fastcgi_cache = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", newCache, siteID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":        "success",
+		"fastcgi_cache": newCache,
 	})
 }
 
