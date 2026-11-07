@@ -2,6 +2,8 @@ package wpcli
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -138,38 +140,60 @@ func (w *WPCLI) GetPluginsWithUpdates(sitePath, ownerUser string) ([]string, err
 	return slugs, nil
 }
 
-// GenerateMagicLogin sinh đường dẫn đăng nhập 1-click vào wp-admin
-func (w *WPCLI) GenerateMagicLogin(sitePath, ownerUser, adminUser string) (string, error) {
-	if adminUser == "" {
-		adminUser = "admin"
+// GenerateMagicLogin sinh đường dẫn đăng nhập 1-click vào wp-admin an toàn bằng One-Time Token
+func (w *WPCLI) GenerateMagicLogin(domain, sitePath, ownerUser string, isSSL bool) (string, error) {
+	tokenBytes := make([]byte, 24)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", fmt.Errorf("không thể sinh token")
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Tạo file đăng nhập tạm thời an toàn trong thư mục web: .wp_magic_<token>.php
+	scriptName := fmt.Sprintf(".wp_magic_%s.php", token[:12])
+	scriptPath := filepath.Join(sitePath, scriptName)
+
+	phpContent := fmt.Sprintf(`<?php
+// VPS WordPress Control - One-Time Auto Login
+if (!isset($_GET['token']) || $_GET['token'] !== '%s') {
+    http_response_code(403);
+    exit('Truy cập bị từ chối');
+}
+
+// Xóa file ngay lập tức sau lần truy cập đầu tiên để đảm bảo chỉ dùng 1 lần
+@unlink(__FILE__);
+
+define('WP_USE_THEMES', false);
+require_once __DIR__ . '/wp-load.php';
+
+$users = get_users(['role' => 'administrator', 'number' => 1]);
+if (empty($users)) {
+    exit('Không tìm thấy tài khoản quản trị viên.');
+}
+
+$admin = $users[0];
+wp_clear_auth_cookie();
+wp_set_current_user($admin->ID);
+wp_set_auth_cookie($admin->ID, true, is_ssl());
+
+wp_safe_redirect(admin_url());
+exit;
+`, token)
+
+	if err := os.WriteFile(scriptPath, []byte(phpContent), 0644); err != nil {
+		return "", fmt.Errorf("không thể tạo file đăng nhập tạm: %w", err)
 	}
 
-	// Thử dùng wp-cli package nếu có
-	out, err := w.Run(sitePath, ownerUser, "login", "create", adminUser, "--url-only")
-	if err == nil && strings.HasPrefix(out, "http") {
-		return out, nil
+	// Đảm bảo owner là user sở hữu website để web server (PHP-FPM) có thể đọc và xóa file sau khi login
+	if os.Geteuid() == 0 && ownerUser != "" && ownerUser != "root" {
+		_ = exec.Command("chown", ownerUser+":"+ownerUser, scriptPath).Run()
 	}
 
-	// Cơ chế dự phòng: Sinh token đăng nhập an toàn tạm thời thông qua PHP eval
-	phpCode := fmt.Sprintf(`
-		require_once('wp-load.php');
-		$user = get_user_by('login', '%s');
-		if (!$user) {
-			$users = get_users(array('role' => 'administrator', 'number' => 1));
-			if (!empty($users)) { $user = $users[0]; }
-		}
-		if ($user) {
-			wp_set_current_user($user->ID);
-			wp_set_auth_cookie($user->ID);
-			echo admin_url();
-		}
-	`, adminUser)
-
-	out, err = w.Run(sitePath, ownerUser, "eval", phpCode)
-	if err == nil && strings.HasPrefix(out, "http") {
-		return out, nil
+	scheme := "http"
+	if isSSL {
+		scheme = "https"
 	}
 
-	return filepath.Join(sitePath, "wp-admin"), nil
+	loginURL := fmt.Sprintf("%s://%s/%s?token=%s", scheme, domain, scriptName, token)
+	return loginURL, nil
 }
 

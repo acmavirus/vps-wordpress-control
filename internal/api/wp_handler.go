@@ -376,15 +376,24 @@ func (h *WPHandler) HandleToggleFastCGICache(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *WPHandler) HandleMagicLogin(w http.ResponseWriter, r *http.Request) {
-	_, _, rootPath, ownerUser, err := h.getSiteInfo(r)
+	idStr := r.PathValue("id")
+	siteID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error": "ID không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	var domain, rootPath, ownerUser string
+	var sslActive int
+	err = h.db.QueryRow("SELECT domain, root_path, owner_user, ssl_active FROM sites WHERE id = ?", siteID).Scan(&domain, &rootPath, &ownerUser, &sslActive)
 	if err != nil {
 		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
 		return
 	}
 
-	url, err := h.wpcli.GenerateMagicLogin(rootPath, ownerUser, "admin")
+	url, err := h.wpcli.GenerateMagicLogin(domain, rootPath, ownerUser, sslActive == 1)
 	if err != nil {
-		http.Error(w, `{"error": "Không thể sinh URL đăng nhập"}`, http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
