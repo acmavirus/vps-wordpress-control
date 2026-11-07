@@ -45,6 +45,7 @@ func (h *WPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/sites/{id}/change-php", h.HandleChangePHPVersion)
 	mux.HandleFunc("GET /api/system/php-versions", h.HandleGetPHPVersions)
 	mux.HandleFunc("POST /api/sites/{id}/toggle-cache", h.HandleToggleFastCGICache)
+	mux.HandleFunc("POST /api/sites/{id}/core-update", h.HandleCoreUpdate)
 }
 
 func (h *WPHandler) HandleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -408,4 +409,46 @@ func (h *WPHandler) getSiteInfo(r *http.Request) (int64, string, string, string,
 		return 0, "", "", "", err
 	}
 	return siteID, slug, rootPath, ownerUser, nil
+}
+
+// HandleCoreUpdate cập nhật WordPress Core của một website
+func (h *WPHandler) HandleCoreUpdate(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	siteID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error": "ID không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	var domain, rootPath, ownerUser string
+	err = h.db.QueryRow("SELECT domain, root_path, owner_user FROM sites WHERE id = ?", siteID).Scan(&domain, &rootPath, &ownerUser)
+	if err != nil {
+		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
+		return
+	}
+
+	if err := h.wpcli.UpdateCore(rootPath, ownerUser); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	// Đọc lại phiên bản WP sau khi cập nhật
+	newVersion := ""
+	if out, err := h.wpcli.Run(rootPath, ownerUser, "core", "version"); err == nil {
+		newVersion = strings.TrimSpace(out)
+		_, _ = h.db.Exec("UPDATE sites SET wp_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", newVersion, siteID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":      "success",
+		"message":     fmt.Sprintf("Đã cập nhật WordPress Core của %s thành công!", domain),
+		"domain":      domain,
+		"new_version": newVersion,
+	})
 }

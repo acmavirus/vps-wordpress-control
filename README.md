@@ -13,12 +13,15 @@
 1. **Auto-Discovery Engine (Tự động quét):** Cài lên VPS đang chạy, tự động phát hiện toàn bộ website WordPress qua cấu hình Nginx (`/etc/nginx/sites-enabled/`) và thư mục web, đọc `wp-config.php`, phân tích plugin & theme mà không làm xáo trộn dữ liệu cũ.
 2. **WordPress Centralized Manager:** Quản lý tập trung Plugin/Theme/Core, cập nhật hàng loạt 1-click, bật/tắt plugin trực tiếp từ Web UI để khắc phục màn hình trắng (WSOD).
 3. **Magic Login (SSO 1-Click):** Tạo đường dẫn đăng nhập quản trị tạm thời, truy cập thẳng vào `wp-admin` mà không cần nhớ mật khẩu.
-4. **Quét Mã Độc 3 Lớp:**
-   - Kiểm tra file thực thi PHP bất thường trong thư mục `wp-content/uploads/`.
-   - Quét tìm các file khả nghi đặt ở thư mục gốc web.
-   - Quét regex nhận diện các chuỗi backdoor / webshell nguy hiểm (`eval(base64_decode)`, `WSO`, `c99`, `assert`).
-5. **Tạo Website Mới 1-Click (Site Provisioning):** Tự động tạo thư mục web, tạo Database MariaDB, tải mã nguồn WordPress sạch, tạo VirtualHost Nginx chuẩn bảo mật và cấp chứng chỉ Let's Encrypt SSL.
-6. **Siêu Nhẹ & An Toàn:** Viết bằng **Golang**, đóng gói trọn vẹn thành 1 file binary duy nhất (~7MB), mức tiêu thụ RAM cực thấp (< 25MB), nhúng sẵn Web Dashboard giao diện hiện đại.
+4. **Hệ Thống Quét Mã Độc Toàn Diện:**
+   - **Lớp Checksum:** Xác thực tính toàn vẹn mã nguồn Core & Plugins với kho lưu trữ chính thức WordPress.org (`wp core verify-checksums` & `wp plugin verify-checksums`).
+   - **Lớp Uploads:** Phát hiện và cảnh báo tức thì các file script thực thi PHP (`.php`, `.phtml`, `.phar`...) nằm trong thư mục `wp-content/uploads/`.
+   - **Lớp Root Anomaly:** Nhận diện các file webshell phổ biến đặt ngoài thư mục gốc (`wso.php`, `c99.php`, `shell.php`...).
+   - **Lớp Pattern Signature:** Quét regex chuyên sâu tìm backdoor, hàm mã hoá nguy hiểm (`eval(base64_decode)`, `gzinflate`, `assert`, `RCE`).
+5. **Async Job Runner & Real-time Progress (SSE):** Quản lý các tác vụ tốn thời gian (quét toàn VPS, cập nhật hàng loạt website) với thanh tiến trình trực quan theo thời gian thực qua Server-Sent Events.
+6. **Sao Lưu & Khôi Phục Nhanh (Backup Engine):** 1-click sao lưu toàn bộ Database & `wp-content` thành file `.tar.gz`, hỗ trợ khôi phục tức thì hoặc tải về.
+7. **Tạo Website Mới 1-Click (Site Provisioning):** Tự động tạo thư mục web, tạo Database MariaDB, tải mã nguồn WordPress sạch theo phiên bản tùy chọn, tạo VirtualHost Nginx chuẩn bảo mật và cấp chứng chỉ Let's Encrypt SSL.
+8. **Siêu Nhẹ & Bảo Mật Cao:** Viết bằng **Golang**, đóng gói trọn vẹn thành 1 file binary duy nhất (~15MB), tiêu thụ RAM < 30MB, hỗ trợ Whitelist IP (`ALLOWED_IPS`), token HMAC-SHA256, nhúng sẵn Web Dashboard giao diện TailwindCSS Dark Mode.
 
 ---
 

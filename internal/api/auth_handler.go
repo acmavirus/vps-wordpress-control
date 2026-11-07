@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -159,8 +160,17 @@ func extractToken(r *http.Request) string {
 }
 
 // Middleware xác thực bảo vệ toàn bộ các endpoint /api/ (ngoại trừ /api/health và /api/auth/login)
+// Đồng thời kiểm tra IP Whitelist nếu biến ALLOWED_IPS được cấu hình
 func (h *AuthHandler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Kiểm tra IP Whitelist nếu cấu hình ALLOWED_IPS không rỗng
+		if h.cfg.AllowedIPs != "" && !h.isIPAllowed(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"status": "error", "error": "Truy cập bị từ chối: IP không nằm trong danh sách cho phép"}`))
+			return
+		}
+
 		path := r.URL.Path
 
 		// Bỏ qua xác thực cho các route công khai
@@ -182,5 +192,42 @@ func (h *AuthHandler) AuthMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (h *AuthHandler) isIPAllowed(r *http.Request) bool {
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP != "" {
+		parts := strings.Split(clientIP, ",")
+		clientIP = strings.TrimSpace(parts[0])
+	}
+	if clientIP == "" {
+		clientIP = r.Header.Get("X-Real-IP")
+	}
+	if clientIP == "" {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err == nil {
+			clientIP = host
+		} else {
+			clientIP = r.RemoteAddr
+		}
+	}
+
+	allowedList := strings.Split(h.cfg.AllowedIPs, ",")
+	for _, allowed := range allowedList {
+		allowed = strings.TrimSpace(allowed)
+		if allowed == "" {
+			continue
+		}
+		// Hỗ trợ kiểm tra CIDR (VD: 192.168.1.0/24) hoặc exact IP
+		if strings.Contains(allowed, "/") {
+			_, ipNet, err := net.ParseCIDR(allowed)
+			if err == nil && ipNet.Contains(net.ParseIP(clientIP)) {
+				return true
+			}
+		} else if allowed == clientIP {
+			return true
+		}
+	}
+	return false
 }
 

@@ -14,6 +14,7 @@ import (
 	"vps-wordpress-control/internal/api"
 	"vps-wordpress-control/internal/config"
 	"vps-wordpress-control/internal/database"
+	"vps-wordpress-control/internal/jobs"
 	"vps-wordpress-control/internal/web"
 )
 
@@ -65,6 +66,11 @@ func main() {
 
 	backupHandler := api.NewBackupHandler(cfg, db.DB)
 	backupHandler.RegisterRoutes(mux)
+
+	// 3. Khởi tạo Job Runner (SSE + Async Tasks)
+	jobRunner := jobs.NewRunner(db.DB)
+	jobHandler := api.NewJobHandler(db.DB, jobRunner)
+	jobHandler.RegisterRoutes(mux)
 
 	// 3. API Health check
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {

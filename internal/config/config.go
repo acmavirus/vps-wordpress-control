@@ -19,6 +19,7 @@ type Config struct {
 	NginxTmplDir         string
 	WWWRootDir           string
 	LogDir               string
+	AllowedIPs           string
 }
 
 func getEnv(key, defaultVal string) string {
@@ -43,6 +44,7 @@ func LoadConfig() *Config {
 		NginxTmplDir:  getEnv("NGINX_TEMPLATES_DIR", "./templates"),
 		WWWRootDir:    getEnv("WWW_ROOT_DIR", "/var/www"),
 		LogDir:        getEnv("LOG_DIR", "./logs"),
+		AllowedIPs:    getEnv("ALLOWED_IPS", ""),
 	}
 }
 

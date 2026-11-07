@@ -79,6 +79,48 @@ func (w *WPCLI) UpdateCore(sitePath, ownerUser string) error {
 	return err
 }
 
+// RunCombined thực thi wp-cli và trả về stdout + stderr kể cả khi lệnh thất bại
+// Hữu ích để parse output của các lệnh checksum
+func (w *WPCLI) RunCombined(sitePath string, ownerUser string, args ...string) string {
+	if ownerUser == "" {
+		ownerUser = "www-data"
+	}
+
+	fullArgs := append([]string{"--path=" + sitePath, "--allow-root"}, args...)
+
+	var cmd *exec.Cmd
+	if os.Geteuid() == 0 && ownerUser != "root" {
+		sudoArgs := append([]string{"-u", ownerUser, w.binPath, "--path=" + sitePath}, args...)
+		cmd = exec.Command("sudo", sudoArgs...)
+	} else {
+		cmd = exec.Command(w.binPath, fullArgs...)
+	}
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	_ = cmd.Run() // Bỏ qua lỗi exit code, lấy toàn bộ output để parse
+	return strings.TrimSpace(out.String())
+}
+
+// GetPluginsWithUpdates trả về danh sách slug plugin có bản cập nhật mới
+func (w *WPCLI) GetPluginsWithUpdates(sitePath, ownerUser string) ([]string, error) {
+	out, err := w.Run(sitePath, ownerUser, "plugin", "list",
+		"--update=available", "--fields=slug", "--format=csv", "--skip-plugins", "--skip-themes")
+	if err != nil {
+		return nil, err
+	}
+
+	var slugs []string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && line != "slug" {
+			slugs = append(slugs, line)
+		}
+	}
+	return slugs, nil
+}
+
 // GenerateMagicLogin sinh đường dẫn đăng nhập 1-click vào wp-admin
 func (w *WPCLI) GenerateMagicLogin(sitePath, ownerUser, adminUser string) (string, error) {
 	if adminUser == "" {

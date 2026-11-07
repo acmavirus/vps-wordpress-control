@@ -111,14 +111,20 @@
             <span>Cập nhật tất cả</span>
           </button>
         </div>
-        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-3">
-          <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
-            <i class="fa-solid fa-shield-halved"></i>
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
+              <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
+            </div>
           </div>
-          <div>
-            <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
-            <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
-          </div>
+          <button onclick="scanAllSitesMalware()" id="btn-scan-all-top" class="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-medium rounded-lg border border-emerald-500/30 transition flex items-center space-x-1">
+            <i class="fa-solid fa-shield-virus"></i>
+            <span>Quét toàn VPS</span>
+          </button>
         </div>
       </div>
 
@@ -271,10 +277,67 @@
   <!-- Drawer Chi tiết Plugins -->
   <div id="drawer-plugins" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-800 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
     <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-      <h3 class="text-sm font-semibold text-white" id="drawer-title">Quản lý Plugins</h3>
-      <button onclick="closePluginDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      <div>
+        <h3 class="text-sm font-semibold text-white" id="drawer-title">Quản lý Plugins</h3>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="drawer-site-domain"></p>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="updateAllPluginsDrawer()" id="btn-update-all-drawer" title="Cập nhật tất cả plugin" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
+          <i class="fa-solid fa-cloud-arrow-up"></i><span>Update All</span>
+        </button>
+        <button onclick="closePluginDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
     </div>
     <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-plugin-list"></div>
+  </div>
+
+  <!-- Modal Backup -->
+  <div id="modal-backup" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-box-archive text-indigo-400"></i>
+          <span id="backup-modal-title">Sao lưu Website</span>
+        </h3>
+        <button onclick="closeBackupModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-slate-300">Website: <strong id="backup-modal-domain" class="text-white"></strong></p>
+          <button onclick="createBackup()" id="btn-create-backup" class="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium flex items-center space-x-1.5">
+            <i class="fa-solid fa-plus"></i><span>Tạo bản sao lưu</span>
+          </button>
+        </div>
+        <div id="backup-list-container" class="space-y-2 max-h-64 overflow-y-auto">
+          <p class="text-xs text-slate-500 text-center py-4">Đang tải...</p>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
+        <button onclick="closeBackupModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tiến Trình Job (SSE Real-time Progress) -->
+  <div id="modal-job" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-spinner fa-spin text-indigo-400" id="job-modal-icon"></i>
+          <span id="job-modal-title">Đang xử lý tác vụ...</span>
+        </h3>
+      </div>
+      <div class="p-5 space-y-4">
+        <div class="w-full bg-slate-700 rounded-full h-2.5">
+          <div id="job-progress-bar" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p class="text-xs text-slate-300" id="job-progress-label">0%</p>
+        <p class="text-xs text-slate-400 font-mono bg-slate-900/60 rounded p-3 min-h-[48px] leading-relaxed" id="job-progress-msg">Đang chuẩn bị...</p>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
+        <button id="btn-close-job" onclick="closeJobModal()" class="hidden px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-medium">Đóng</button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast Notification -->
@@ -287,7 +350,10 @@
     let currentSites = [];
     let selectedSiteIds = new Set();
     let currentPHPChangeSiteId = null;
+    let currentBackupSiteId = null;
+    let currentDrawerSiteId = null;
     let availablePHPVersions = ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
+    let activeJobEventSource = null;
 
     async function apiFetch(url, options = {}) {
       const token = localStorage.getItem('wp_control_token');
@@ -454,6 +520,12 @@
             <button onclick="scanSiteMalware(${s.id})" title="Quét mã độc 3 lớp" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-amber-400 rounded">
               <i class="fa-solid fa-shield-virus"></i>
             </button>
+            <button onclick="coreUpdate(${s.id}, '${s.domain}')" title="Cập nhật WordPress Core" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded">
+              <i class="fa-brands fa-wordpress"></i>
+            </button>
+            <button onclick="openBackupModal(${s.id}, '${s.domain}')" title="Sao lưu & Khôi phục" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-sky-400 rounded">
+              <i class="fa-solid fa-box-archive"></i>
+            </button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -496,33 +568,217 @@
     async function bulkUpdateSelected() {
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
-      showToast(`Đang cập nhật plugin cho ${ids.length} website...`, 'info');
+      showToast(`Đang khởi tạo tác vụ cập nhật cho ${ids.length} website...`, 'info');
 
       try {
-        const res = await apiFetch('/api/sites/bulk-update-plugins', {
+        const res = await apiFetch('/api/jobs/bulk-update', {
           method: 'POST',
           body: JSON.stringify({ site_ids: ids })
         });
         const data = await res.json();
-        showToast(`Hoàn tất cập nhật ${data.success_count}/${data.total_sites} website!`, 'success');
-        loadSites();
+        if (data.job_id) {
+          openJobModal(`Cập nhật Plugins (${ids.length} website)`, data.job_id, () => loadSites());
+        } else {
+          showToast('Không thể tạo job cập nhật', 'error');
+        }
       } catch (err) {
         showToast('Lỗi khi cập nhật hàng loạt', 'error');
       }
     }
 
     async function bulkUpdateAllSites() {
-      showToast('Đang cập nhật tất cả plugin trên toàn bộ VPS...', 'info');
+      showToast('Đang tạo tác vụ cập nhật hàng loạt...', 'info');
       try {
-        const res = await apiFetch('/api/sites/bulk-update-plugins', {
+        const res = await apiFetch('/api/jobs/bulk-update', {
           method: 'POST',
           body: JSON.stringify({ site_ids: [] })
         });
         const data = await res.json();
-        showToast(`Đã cập nhật plugin cho ${data.success_count} website có bản cập nhật!`, 'success');
-        loadSites();
+        if (data.job_id) {
+          openJobModal('Cập nhật Plugin Hàng Loạt', data.job_id, () => loadSites());
+        }
       } catch (err) {
-        showToast('Lỗi cập nhật', 'error');
+        showToast('Lỗi tạo tác vụ cập nhật', 'error');
+      }
+    }
+
+    // ==================== CORE UPDATE ====================
+    async function coreUpdate(siteId, domain) {
+      if (!confirm(`Cập nhật WordPress Core của "${domain}"?\nQuá trình có thể mất vài phút.`)) return;
+      showToast(`Đang cập nhật Core WP cho ${domain}...`, 'info');
+      try {
+        const res = await apiFetch(`/api/sites/${siteId}/core-update`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(data.message, 'success');
+          loadSites();
+        } else {
+          showToast(data.error || 'Cập nhật Core thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi cập nhật Core', 'error');
+      }
+    }
+
+    // ==================== SSE JOB PROGRESS MODAL ====================
+    function openJobModal(title, jobId, onComplete) {
+      document.getElementById('job-modal-title').innerText = title;
+      document.getElementById('job-modal-icon').className = 'fa-solid fa-spinner fa-spin text-indigo-400';
+      document.getElementById('job-progress-bar').style.width = '0%';
+      document.getElementById('job-progress-label').innerText = '0%';
+      document.getElementById('job-progress-msg').innerText = 'Đang khởi động...';
+      document.getElementById('btn-close-job').classList.add('hidden');
+      document.getElementById('modal-job').classList.remove('hidden');
+
+      if (activeJobEventSource) {
+        activeJobEventSource.close();
+        activeJobEventSource = null;
+      }
+
+      const token = localStorage.getItem('wp_control_token');
+      const es = new EventSource(`/api/jobs/${jobId}/stream?token=${token}`);
+      activeJobEventSource = es;
+
+      es.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data);
+          const pct = Math.min(event.progress || 0, 100);
+          document.getElementById('job-progress-bar').style.width = pct + '%';
+          document.getElementById('job-progress-label').innerText = pct + '%';
+          document.getElementById('job-progress-msg').innerText = event.message || '';
+
+          if (event.status === 'completed') {
+            document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-check text-emerald-400';
+            document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+            document.getElementById('btn-close-job').classList.remove('hidden');
+            es.close();
+            if (onComplete) onComplete();
+          } else if (event.status === 'failed') {
+            document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-xmark text-red-400';
+            document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+            document.getElementById('btn-close-job').classList.remove('hidden');
+            es.close();
+          }
+        } catch (err) {}
+      };
+
+      es.onerror = () => {
+        document.getElementById('btn-close-job').classList.remove('hidden');
+        es.close();
+      };
+    }
+
+    function closeJobModal() {
+      document.getElementById('modal-job').classList.add('hidden');
+      if (activeJobEventSource) {
+        activeJobEventSource.close();
+        activeJobEventSource = null;
+      }
+    }
+
+    // ==================== BACKUP ====================
+    async function openBackupModal(siteId, domain) {
+      currentBackupSiteId = siteId;
+      document.getElementById('backup-modal-domain').innerText = domain;
+      document.getElementById('backup-modal-title').innerText = `Sao lưu: ${domain}`;
+      document.getElementById('modal-backup').classList.remove('hidden');
+      await loadBackups();
+    }
+
+    function closeBackupModal() {
+      document.getElementById('modal-backup').classList.add('hidden');
+      currentBackupSiteId = null;
+    }
+
+    async function loadBackups() {
+      if (!currentBackupSiteId) return;
+      const container = document.getElementById('backup-list-container');
+      container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang tải...</p>`;
+      try {
+        const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups`);
+        const data = await res.json();
+        const backups = data.backups || [];
+        if (backups.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Chưa có bản sao lưu nào.</p>`;
+          return;
+        }
+        container.innerHTML = backups.map(b => `
+          <div class="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-lg border border-slate-700/60 mb-2">
+            <div>
+              <p class="text-xs font-medium text-white">${b.filename}</p>
+              <p class="text-[10px] text-slate-400">${b.size_human} · ${b.created_at}</p>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button onclick="restoreBackup('${b.filename}')" title="Khôi phục từ bản này"
+                class="px-2 py-1 text-[10px] bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded">
+                <i class="fa-solid fa-rotate-left"></i> Restore
+              </button>
+              <button onclick="deleteBackup('${b.filename}')" title="Xóa bản sao lưu này"
+                class="px-2 py-1 text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-red-400 text-center py-4">Lỗi tải danh sách sao lưu.</p>`;
+      }
+    }
+
+    async function createBackup() {
+      if (!currentBackupSiteId) return;
+      const btn = document.getElementById('btn-create-backup');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang sao lưu...';
+      btn.disabled = true;
+      try {
+        const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(`Đã tạo bản sao lưu: ${data.backup.filename}`, 'success');
+          await loadBackups();
+        } else {
+          showToast(data.error || 'Tạo backup thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi tạo backup', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo bản sao lưu';
+        btn.disabled = false;
+      }
+    }
+
+    async function restoreBackup(filename) {
+      if (!confirm(`Khôi phục từ bản: "${filename}"?\nThao tác này sẽ ghi đè dữ liệu hiện tại!`)) return;
+      showToast(`Đang khôi phục từ ${filename}...`, 'info');
+      try {
+        const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups/restore`, {
+          method: 'POST',
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast('Khôi phục website thành công!', 'success');
+        } else {
+          showToast(data.error || 'Khôi phục thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi khôi phục', 'error');
+      }
+    }
+
+    async function deleteBackup(filename) {
+      if (!confirm(`Xóa bản sao lưu "${filename}"?`)) return;
+      try {
+        const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast('Đã xóa bản sao lưu', 'success');
+          await loadBackups();
+        } else {
+          showToast('Xóa thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi xóa', 'error');
       }
     }
 
@@ -655,10 +911,12 @@
     }
 
     async function openPluginDrawer(siteId) {
+      currentDrawerSiteId = siteId;
       try {
         const res = await apiFetch(`/api/sites/${siteId}`);
         const data = await res.json();
-        document.getElementById('drawer-title').innerText = `Plugins: ${data.site.domain}`;
+        document.getElementById('drawer-title').innerText = `Plugins (${data.plugins ? data.plugins.length : 0})`;
+        document.getElementById('drawer-site-domain').innerText = data.site ? data.site.domain : '';
         const list = document.getElementById('drawer-plugin-list');
         list.innerHTML = '';
 
@@ -666,16 +924,28 @@
           list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">Không có plugin nào.</div>`;
         } else {
           data.plugins.forEach(p => {
+            const isActive = p.status === 'active';
+            const hasUpdate = p.has_update == 1;
             const div = document.createElement('div');
-            div.className = 'py-3 flex items-center justify-between';
+            div.className = 'py-3 flex items-center justify-between gap-2';
+            div.id = `plugin-row-${siteId}-${p.slug}`;
             div.innerHTML = `
-              <div>
-                <p class="font-medium text-white text-xs">${p.name}</p>
-                <p class="text-[10px] text-slate-400">Phiên bản: ${p.version}</p>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white text-xs flex items-center space-x-1.5">
+                  <span>${p.name}</span>
+                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">update</span>` : ''}
+                </p>
+                <p class="text-[10px] text-slate-400">v${p.version || 'N/A'} · <span class="${isActive ? 'text-emerald-400' : 'text-slate-500'}">${isActive ? 'Đang bật' : 'Đã tắt'}</span></p>
               </div>
-              <div class="space-x-1.5">
-                <button onclick="updatePlugin(${siteId}, '${p.slug}')" class="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
-                  Update
+              <div class="flex items-center space-x-1.5 shrink-0">
+                ${hasUpdate ? `<button onclick="updatePlugin(${siteId}, '${p.slug}')" class="px-2 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-0.5">
+                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>Update</span>
+                </button>` : ''}
+                <button onclick="togglePlugin(${siteId}, '${p.slug}', ${!isActive})"
+                  class="px-2 py-1 text-[10px] rounded border transition ${isActive
+                    ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30'
+                    : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}">
+                  ${isActive ? '<i class="fa-solid fa-toggle-off"></i> Tắt' : '<i class="fa-solid fa-toggle-on"></i> Bật'}
                 </button>
               </div>
             `;
@@ -685,6 +955,42 @@
         document.getElementById('drawer-plugins').classList.remove('translate-x-full');
       } catch (err) {
         showToast('Lỗi tải danh sách plugin', 'error');
+      }
+    }
+
+    async function updateAllPluginsDrawer() {
+      if (!currentDrawerSiteId) return;
+      showToast('Đang cập nhật tất cả plugin...', 'info');
+      try {
+        const res = await apiFetch(`/api/sites/${currentDrawerSiteId}/plugins/update-all`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast('Đã cập nhật tất cả plugin thành công!', 'success');
+          openPluginDrawer(currentDrawerSiteId);
+          loadSites();
+        } else {
+          showToast(data.error || 'Cập nhật thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối', 'error');
+      }
+    }
+
+    async function togglePlugin(siteId, slug, activate) {
+      try {
+        const res = await apiFetch(`/api/sites/${siteId}/plugins/${slug}/toggle`, {
+          method: 'POST',
+          body: JSON.stringify({ active: activate })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(`${activate ? 'Đã kích hoạt' : 'Đã vô hiệu hóa'} plugin ${slug}`, 'success');
+          openPluginDrawer(siteId);
+        } else {
+          showToast(data.error || 'Thao tác thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi toggle plugin', 'error');
       }
     }
 

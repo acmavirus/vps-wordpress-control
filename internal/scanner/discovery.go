@@ -11,15 +11,17 @@ import (
 
 	"vps-wordpress-control/internal/config"
 	"vps-wordpress-control/internal/models"
+	"vps-wordpress-control/internal/wpcli"
 )
 
 type DiscoveryEngine struct {
-	cfg *config.Config
-	db  *sql.DB
+	cfg   *config.Config
+	db    *sql.DB
+	wpcli *wpcli.WPCLI
 }
 
 func NewDiscoveryEngine(cfg *config.Config, db *sql.DB) *DiscoveryEngine {
-	return &DiscoveryEngine{cfg: cfg, db: db}
+	return &DiscoveryEngine{cfg: cfg, db: db, wpcli: wpcli.NewWPCLI()}
 }
 
 type DiscoveredSite struct {
@@ -305,14 +307,52 @@ func (e *DiscoveryEngine) saveDiscoveredSite(site *DiscoveredSite) error {
 		return err
 	}
 
+	// Lấy danh sách slug plugin có update từ WP-CLI (tùy chọn — không làm hỏng nếu WP-CLI không có)
+	pluginsWithUpdate := e.getPluginsWithUpdate(site.RootPath, site.OwnerUser)
+
 	// Cập nhật danh sách plugins
 	for _, p := range site.Plugins {
+		hasUpdate := 0
+		if pluginsWithUpdate[p.Slug] {
+			hasUpdate = 1
+		}
 		pQuery := `
 		INSERT INTO site_plugins (site_id, slug, name, version, status, has_update)
 		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO NOTHING;
 		`
-		_, _ = e.db.Exec(pQuery, siteID, p.Slug, p.Name, p.Version, p.Status, p.HasUpdate)
+		_, _ = e.db.Exec(pQuery, siteID, p.Slug, p.Name, p.Version, p.Status, hasUpdate)
 	}
+
+	// Cập nhật has_update cho các plugin đã tồn tại
+	for slug, hasUpd := range pluginsWithUpdate {
+		if hasUpd {
+			_, _ = e.db.Exec("UPDATE site_plugins SET has_update = 1 WHERE site_id = ? AND slug = ?", siteID, slug)
+		}
+	}
+
 	return nil
+}
+
+// getPluginsWithUpdate dùng WP-CLI để lấy danh sách plugin có bản cập nhật
+// Trả về map[slug]true; bỏ qua hoàn toàn nếu WP-CLI không khả dụng
+func (e *DiscoveryEngine) getPluginsWithUpdate(rootPath, ownerUser string) map[string]bool {
+	result := make(map[string]bool)
+	if ownerUser == "" {
+		ownerUser = "www-data"
+	}
+
+	slugs, err := e.wpcli.GetPluginsWithUpdates(rootPath, ownerUser)
+	if err != nil {
+		// WP-CLI không có hoặc lỗi — silent skip, không làm ảnh hưởng discovery
+		return result
+	}
+
+	for _, slug := range slugs {
+		if slug != "" {
+			result[slug] = true
+		}
+	}
+	log.Printf("[Discovery] %s: Phát hiện %d plugin cần cập nhật.", rootPath, len(result))
+	return result
 }
