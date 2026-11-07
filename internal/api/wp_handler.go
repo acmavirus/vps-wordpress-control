@@ -46,6 +46,7 @@ func (h *WPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/system/php-versions", h.HandleGetPHPVersions)
 	mux.HandleFunc("POST /api/sites/{id}/toggle-cache", h.HandleToggleFastCGICache)
 	mux.HandleFunc("POST /api/sites/{id}/core-update", h.HandleCoreUpdate)
+	mux.HandleFunc("POST /api/sites/{id}/issue-ssl", h.HandleIssueSSL)
 }
 
 func (h *WPHandler) HandleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -459,5 +460,57 @@ func (h *WPHandler) HandleCoreUpdate(w http.ResponseWriter, r *http.Request) {
 		"message":     fmt.Sprintf("Đã cập nhật WordPress Core của %s thành công!", domain),
 		"domain":      domain,
 		"new_version": newVersion,
+	})
+}
+
+// HandleIssueSSL cấp hoặc gia hạn chứng chỉ Let's Encrypt SSL cho website
+func (h *WPHandler) HandleIssueSSL(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	siteID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error": "ID không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	var domain string
+	err = h.db.QueryRow("SELECT domain FROM sites WHERE id = ?", siteID).Scan(&domain)
+	if err != nil {
+		http.Error(w, `{"error": "Không tìm thấy website"}`, http.StatusNotFound)
+		return
+	}
+
+	adminEmail := fmt.Sprintf("admin@%s", domain)
+	log.Printf("[Certbot] Yêu cầu cấp SSL cho domain: %s (Email: %s)", domain, adminEmail)
+
+	// Thử chạy certbot cấp SSL
+	cmd := exec.Command("certbot", "--nginx", "-d", domain, "-d", "www."+domain,
+		"--non-interactive", "--agree-tos", "-m", adminEmail, "--redirect")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// Thử cấp đơn domain nếu www.domain không trỏ DNS
+		cmdSingle := exec.Command("certbot", "--nginx", "-d", domain,
+			"--non-interactive", "--agree-tos", "-m", adminEmail, "--redirect")
+		outSingle, errSingle := cmdSingle.CombinedOutput()
+		if errSingle != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": "error",
+				"error":  fmt.Sprintf("Lỗi cấp SSL qua Certbot: %s", string(outSingle)),
+			})
+			return
+		}
+	}
+
+	// Cập nhật trạng thái SSL vào database
+	_, _ = h.db.Exec("UPDATE sites SET ssl_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", siteID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":     "success",
+		"message":    fmt.Sprintf("Đã cấp và kích hoạt SSL HTTPS thành công cho %s!", domain),
+		"domain":     domain,
+		"ssl_active": true,
+		"log":        string(out),
 	})
 }

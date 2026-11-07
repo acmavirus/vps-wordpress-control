@@ -136,11 +136,23 @@
             <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
           </div>
           <!-- Bulk Action Bar -->
-          <div id="bulk-action-bar" class="hidden flex items-center space-x-2 bg-indigo-950/80 border border-indigo-500/30 px-3 py-1 rounded-lg">
-            <span class="text-xs text-indigo-300 font-medium" id="selected-count-label">Đã chọn 0 website</span>
+          <div id="bulk-action-bar" class="hidden flex items-center space-x-2 bg-indigo-950/80 border border-indigo-500/30 px-3 py-1.5 rounded-lg flex-wrap gap-y-1">
+            <span class="text-xs text-indigo-300 font-medium mr-1" id="selected-count-label">Đã chọn 0 website</span>
             <button onclick="bulkUpdateSelected()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
-              <i class="fa-solid fa-wrench"></i>
+              <i class="fa-solid fa-puzzle-piece"></i>
               <span>Cập nhật Plugins</span>
+            </button>
+            <button onclick="bulkCoreUpdateSelected()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+              <i class="fa-brands fa-wordpress"></i>
+              <span>Cập nhật WP Core</span>
+            </button>
+            <button onclick="bulkOpenPHPModal()" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+              <i class="fa-brands fa-php"></i>
+              <span>Đổi PHP</span>
+            </button>
+            <button onclick="bulkIssueSSLSelected()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+              <i class="fa-solid fa-lock"></i>
+              <span>Cài SSL</span>
             </button>
           </div>
         </div>
@@ -504,8 +516,11 @@
           <td class="px-4 py-3.5 font-mono text-[11px] text-slate-400">${s.db_name || '-'}</td>
           <td class="px-4 py-3.5">
             ${s.ssl_active 
-              ? '<span class="inline-flex items-center text-emerald-400 text-[11px]"><i class="fa-solid fa-lock mr-1"></i> HTTPS</span>' 
-              : '<span class="inline-flex items-center text-slate-400 text-[11px]">HTTP</span>'}
+              ? '<span class="inline-flex items-center text-emerald-400 text-[11px] font-medium"><i class="fa-solid fa-lock mr-1"></i> HTTPS</span>' 
+              : `<button onclick="issueSSL(${s.id}, '${s.domain}')" title="Click để cài đặt Let's Encrypt SSL" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition">
+                  <i class="fa-solid fa-shield-halved mr-1"></i>
+                  <span>Cài SSL</span>
+                </button>`}
           </td>
           <td class="px-4 py-3.5">
             <button onclick="openPluginDrawer(${s.id})" class="text-indigo-400 hover:text-indigo-300 underline font-medium">
@@ -618,6 +633,77 @@
       } catch (err) {
         showToast('Lỗi khi cập nhật Core', 'error');
       }
+    }
+
+    async function bulkCoreUpdateSelected() {
+      if (selectedSiteIds.size === 0) return;
+      const ids = Array.from(selectedSiteIds);
+      if (!confirm(`Bạn có chắc muốn cập nhật WordPress Core cho ${ids.length} website đã chọn?`)) return;
+
+      let successCount = 0;
+      showToast(`Bắt đầu cập nhật WP Core cho ${ids.length} website...`, 'info');
+      for (const id of ids) {
+        try {
+          const res = await apiFetch(`/api/sites/${id}/core-update`, { method: 'POST' });
+          const data = await res.json();
+          if (data.status === 'success') successCount++;
+        } catch (e) {}
+      }
+      showToast(`Hoàn tất cập nhật WP Core cho ${successCount}/${ids.length} website!`, 'success');
+      loadSites();
+    }
+
+    // ==================== SSL MANAGEMENT ====================
+    async function issueSSL(siteId, domain) {
+      if (!confirm(`Cấp chứng chỉ Let's Encrypt SSL cho "${domain}"?\nĐảm bảo tên miền đã trỏ đúng IP VPS.`)) return;
+      showToast(`Đang yêu cầu cấp SSL cho ${domain}...`, 'info');
+      try {
+        const res = await apiFetch(`/api/sites/${siteId}/issue-ssl`, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(data.message, 'success');
+          loadSites();
+        } else {
+          showToast(data.error || 'Cấp SSL thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gửi yêu cầu cấp SSL', 'error');
+      }
+    }
+
+    async function bulkIssueSSLSelected() {
+      if (selectedSiteIds.size === 0) return;
+      const ids = Array.from(selectedSiteIds);
+      if (!confirm(`Cấp chứng chỉ SSL cho ${ids.length} website đã chọn?`)) return;
+
+      let successCount = 0;
+      showToast(`Đang cấp SSL cho ${ids.length} website...`, 'info');
+      for (const id of ids) {
+        try {
+          const res = await apiFetch(`/api/sites/${id}/issue-ssl`, { method: 'POST' });
+          const data = await res.json();
+          if (data.status === 'success') successCount++;
+        } catch (e) {}
+      }
+      showToast(`Hoàn tất cấp SSL cho ${successCount}/${ids.length} website!`, 'success');
+      loadSites();
+    }
+
+    function bulkOpenPHPModal() {
+      if (selectedSiteIds.size === 0) return;
+      const ids = Array.from(selectedSiteIds);
+      currentPHPChangeSiteId = ids; // Lưu mảng ID
+      document.getElementById('php-modal-domain').innerText = `${ids.length} website đã chọn`;
+      const select = document.getElementById('select-php-version');
+      select.innerHTML = '';
+      availablePHPVersions.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.innerText = `PHP ${v}`;
+        if (v === '8.2') opt.selected = true;
+        select.appendChild(opt);
+      });
+      document.getElementById('modal-php').classList.remove('hidden');
     }
 
     // ==================== SSE JOB PROGRESS MODAL ====================
@@ -852,18 +938,33 @@
       btn.disabled = true;
 
       try {
-        const res = await apiFetch(`/api/sites/${currentPHPChangeSiteId}/change-php`, {
-          method: 'POST',
-          body: JSON.stringify({ php_version: newVersion })
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          showToast(data.message, 'success');
-          closePHPModal();
-          loadSites();
+        if (Array.isArray(currentPHPChangeSiteId)) {
+          let successCount = 0;
+          for (const sId of currentPHPChangeSiteId) {
+            try {
+              const res = await apiFetch(`/api/sites/${sId}/change-php`, {
+                method: 'POST',
+                body: JSON.stringify({ php_version: newVersion })
+              });
+              const data = await res.json();
+              if (data.status === 'success') successCount++;
+            } catch (e) {}
+          }
+          showToast(`Đã chuyển PHP ${newVersion} cho ${successCount}/${currentPHPChangeSiteId.length} website!`, 'success');
         } else {
-          showToast(data.error || 'Đổi PHP thất bại', 'error');
+          const res = await apiFetch(`/api/sites/${currentPHPChangeSiteId}/change-php`, {
+            method: 'POST',
+            body: JSON.stringify({ php_version: newVersion })
+          });
+          const data = await res.json();
+          if (data.status === 'success') {
+            showToast(data.message, 'success');
+          } else {
+            showToast(data.error || 'Đổi PHP thất bại', 'error');
+          }
         }
+        closePHPModal();
+        loadSites();
       } catch (err) {
         showToast('Lỗi kết nối', 'error');
       } finally {
