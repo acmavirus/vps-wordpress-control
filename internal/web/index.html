@@ -12,92 +12,136 @@
 </head>
 <body class="h-full flex flex-col font-sans">
 
-  <!-- Header -->
-  <header class="bg-slate-800/80 border-b border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/20">
+  <!-- MÀN HÌNH ĐĂNG NHẬP (Hiển thị khi chưa xác thực) -->
+  <div id="login-container" class="min-h-full flex items-center justify-center p-4">
+    <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl w-full max-w-sm p-8 shadow-2xl backdrop-blur-xl">
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30 mb-3">
           <i class="fa-brands fa-wordpress"></i>
         </div>
-        <div>
-          <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
-          <span class="text-xs text-slate-400">Lightweight Dedicated Panel</span>
-        </div>
+        <h2 class="text-lg font-bold text-white tracking-tight">VPS WordPress Control</h2>
+        <p class="text-xs text-slate-400 mt-1">Đăng nhập để quản trị máy chủ</p>
       </div>
-      <div class="flex items-center space-x-3">
-        <button onclick="scanVPS()" id="btn-scan-vps" class="px-3.5 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md border border-slate-600 transition flex items-center space-x-2">
-          <i class="fa-solid fa-arrows-rotate"></i>
-          <span>Quét lại VPS</span>
-        </button>
-        <button onclick="openCreateModal()" class="px-3.5 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-md shadow transition flex items-center space-x-2">
-          <i class="fa-solid fa-plus"></i>
-          <span>Thêm Website</span>
-        </button>
-      </div>
-    </div>
-  </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    
-    <!-- Stats Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
-        <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center text-xl">
-          <i class="fa-solid fa-globe"></i>
+      <form onsubmit="handleLogin(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Tài khoản</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input type="text" id="login-user" value="admin" required class="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-indigo-500">
+          </div>
         </div>
         <div>
-          <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
-          <p class="text-2xl font-bold" id="stat-total-sites">0</p>
+          <label class="block text-slate-300 font-medium mb-1">Mật khẩu</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="login-pass" required placeholder="••••••••••••" class="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-indigo-500">
+          </div>
         </div>
-      </div>
-      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
-        <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-lg flex items-center justify-center text-xl">
-          <i class="fa-solid fa-puzzle-piece"></i>
-        </div>
-        <div>
-          <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
-          <p class="text-2xl font-bold" id="stat-total-updates">0</p>
-        </div>
-      </div>
-      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
-        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
-          <i class="fa-solid fa-shield-halved"></i>
-        </div>
-        <div>
-          <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
-          <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
-        </div>
-      </div>
-    </div>
 
-    <!-- Website List -->
-    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
-      <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
-        <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+        <button type="submit" id="btn-login-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 transition duration-200 mt-2">
+          Đăng Nhập
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MÀN HÌNH DASHBOARD (Hiển thị sau khi đăng nhập) -->
+  <div id="app-container" class="h-full flex flex-col hidden">
+    <!-- Header -->
+    <header class="bg-slate-800/80 border-b border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/20">
+            <i class="fa-brands fa-wordpress"></i>
+          </div>
+          <div>
+            <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
+            <span class="text-xs text-slate-400">Lightweight Dedicated Panel</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2.5">
+          <button onclick="scanVPS()" id="btn-scan-vps" class="px-3 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md border border-slate-600 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Quét lại VPS</span>
+          </button>
+          <button onclick="openCreateModal()" class="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-md shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-plus"></i>
+            <span>Thêm Website</span>
+          </button>
+          <button onclick="handleLogout()" title="Đăng xuất" class="p-1.5 text-slate-400 hover:text-red-400 transition ml-2">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
       </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
       
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
-            <tr>
-              <th class="px-5 py-3">Tên miền</th>
-              <th class="px-5 py-3">Phiên bản</th>
-              <th class="px-5 py-3">Database</th>
-              <th class="px-5 py-3">SSL</th>
-              <th class="px-5 py-3">Plugins</th>
-              <th class="px-5 py-3 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="sites-table-body" class="divide-y divide-slate-700/50">
-            <!-- Render via JS -->
-          </tbody>
-        </table>
+      <!-- Stats Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+          <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-globe"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
+            <p class="text-2xl font-bold" id="stat-total-sites">0</p>
+          </div>
+        </div>
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+          <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-puzzle-piece"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
+            <p class="text-2xl font-bold" id="stat-total-updates">0</p>
+          </div>
+        </div>
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+          <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
+            <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
+          </div>
+        </div>
       </div>
-    </div>
 
-  </main>
+      <!-- Website List -->
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
+        <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
+          <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
+              <tr>
+                <th class="px-5 py-3">Tên miền</th>
+                <th class="px-5 py-3">Phiên bản</th>
+                <th class="px-5 py-3">Database</th>
+                <th class="px-5 py-3">SSL</th>
+                <th class="px-5 py-3">Plugins</th>
+                <th class="px-5 py-3 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="sites-table-body" class="divide-y divide-slate-700/50">
+              <!-- Render via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
 
   <!-- Modal Tạo Website Mới -->
   <div id="modal-create" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
@@ -156,9 +200,7 @@
         </h3>
         <button onclick="closeScanModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="p-5 max-h-[60vh] overflow-y-auto" id="scan-modal-content">
-        <!-- Render findings -->
-      </div>
+      <div class="p-5 max-h-[60vh] overflow-y-auto" id="scan-modal-content"></div>
       <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
         <button onclick="closeScanModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium">Đóng</button>
       </div>
@@ -171,9 +213,7 @@
       <h3 class="text-sm font-semibold text-white" id="drawer-title">Quản lý Plugins</h3>
       <button onclick="closePluginDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-plugin-list">
-      <!-- Render plugin list -->
-    </div>
+    <div class="p-4 flex-1 overflow-y-auto divide-y divide-slate-700/60" id="drawer-plugin-list"></div>
   </div>
 
   <!-- Toast Notification -->
@@ -185,9 +225,94 @@
   <script>
     let currentSites = [];
 
+    // Helper fetch có đính kèm Bearer Token
+    async function apiFetch(url, options = {}) {
+      const token = localStorage.getItem('wp_control_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+      };
+
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) {
+        localStorage.removeItem('wp_control_token');
+        showLoginView();
+        throw new Error('Yêu cầu đăng nhập');
+      }
+      return res;
+    }
+
+    async function checkAuth() {
+      const token = localStorage.getItem('wp_control_token');
+      if (!token) {
+        showLoginView();
+        return;
+      }
+      try {
+        const res = await apiFetch('/api/auth/me');
+        if (res.ok) {
+          showAppView();
+          loadSites();
+        } else {
+          showLoginView();
+        }
+      } catch (err) {
+        showLoginView();
+      }
+    }
+
+    function showLoginView() {
+      document.getElementById('login-container').classList.remove('hidden');
+      document.getElementById('app-container').classList.add('hidden');
+    }
+
+    function showAppView() {
+      document.getElementById('login-container').classList.add('hidden');
+      document.getElementById('app-container').classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('login-user').value;
+      const pass = document.getElementById('login-pass').value;
+      const btn = document.getElementById('btn-login-submit');
+
+      btn.innerText = 'Đang xác thực...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.token) {
+          localStorage.setItem('wp_control_token', data.token);
+          showAppView();
+          loadSites();
+          showToast('Đăng nhập thành công!', 'success');
+        } else {
+          showToast(data.error || 'Sai tài khoản hoặc mật khẩu', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi máy chủ khi đăng nhập', 'error');
+      } finally {
+        btn.innerText = 'Đăng Nhập';
+        btn.disabled = false;
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('wp_control_token');
+      showLoginView();
+      showToast('Đã đăng xuất', 'info');
+    }
+
     async function loadSites() {
       try {
-        const res = await fetch('/api/sites');
+        const res = await apiFetch('/api/sites');
         const data = await res.json();
         currentSites = data.data || [];
         renderSites(currentSites);
@@ -253,7 +378,7 @@
       const btn = document.getElementById('btn-scan-vps');
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Đang quét...</span>';
       try {
-        const res = await fetch('/api/discovery/scan', { method: 'POST' });
+        const res = await apiFetch('/api/discovery/scan', { method: 'POST' });
         const data = await res.json();
         showToast(`Đã đồng bộ ${data.sites_discovered} website!`, 'success');
         loadSites();
@@ -267,7 +392,7 @@
     async function scanSiteMalware(id) {
       showToast('Đang quét mã độc 3 tầng...', 'info');
       try {
-        const res = await fetch(`/api/sites/${id}/scan`, { method: 'POST' });
+        const res = await apiFetch(`/api/sites/${id}/scan`, { method: 'POST' });
         const data = await res.json();
         openScanModal(data);
       } catch (err) {
@@ -315,7 +440,7 @@
 
     async function magicLogin(id) {
       try {
-        const res = await fetch(`/api/sites/${id}/magic-login`);
+        const res = await apiFetch(`/api/sites/${id}/magic-login`);
         const data = await res.json();
         if (data.login_url) {
           window.open(data.login_url, '_blank');
@@ -329,7 +454,7 @@
 
     async function openPluginDrawer(siteId) {
       try {
-        const res = await fetch(`/api/sites/${siteId}`);
+        const res = await apiFetch(`/api/sites/${siteId}`);
         const data = await res.json();
         document.getElementById('drawer-title').innerText = `Plugins: ${data.site.domain}`;
         const list = document.getElementById('drawer-plugin-list');
@@ -368,7 +493,7 @@
     async function updatePlugin(siteId, slug) {
       showToast(`Đang cập nhật plugin ${slug}...`, 'info');
       try {
-        const res = await fetch(`/api/sites/${siteId}/plugins/${slug}/update`, { method: 'POST' });
+        const res = await apiFetch(`/api/sites/${siteId}/plugins/${slug}/update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
           showToast(`Cập nhật ${slug} thành công!`, 'success');
@@ -406,9 +531,8 @@
       };
 
       try {
-        const res = await fetch('/api/sites/create', {
+        const res = await apiFetch('/api/sites/create', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
@@ -447,8 +571,8 @@
       }, 3500);
     }
 
-    // Load initial
-    loadSites();
+    // Kiểm tra đăng nhập khi mở trang
+    checkAuth();
   </script>
 </body>
 </html>

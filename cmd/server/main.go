@@ -70,7 +70,7 @@ func main() {
 	serverAddr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
 	server := &http.Server{
 		Addr:         serverAddr,
-		Handler:      mux,
+		Handler:      authHandler.AuthMiddleware(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
