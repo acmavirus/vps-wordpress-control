@@ -12,7 +12,7 @@
 </head>
 <body class="h-full flex flex-col font-sans">
 
-  <!-- MÀN HÌNH ĐĂNG NHẬP (Hiển thị khi chưa xác thực) -->
+  <!-- MÀN HÌNH ĐĂNG NHẬP -->
   <div id="login-container" class="min-h-full flex items-center justify-center p-4">
     <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl w-full max-w-sm p-8 shadow-2xl backdrop-blur-xl">
       <div class="text-center mb-6">
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <!-- MÀN HÌNH DASHBOARD (Hiển thị sau khi đăng nhập) -->
+  <!-- MÀN HÌNH DASHBOARD -->
   <div id="app-container" class="h-full flex flex-col hidden">
     <!-- Header -->
     <header class="bg-slate-800/80 border-b border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
@@ -85,25 +85,33 @@
       
       <!-- Stats Row -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
-          <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center text-xl">
-            <i class="fa-solid fa-globe"></i>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
-            <p class="text-2xl font-bold" id="stat-total-sites">0</p>
-          </div>
-        </div>
-        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
-          <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-lg flex items-center justify-center text-xl">
-            <i class="fa-solid fa-puzzle-piece"></i>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
-            <p class="text-2xl font-bold" id="stat-total-updates">0</p>
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center text-xl">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
+              <p class="text-2xl font-bold" id="stat-total-sites">0</p>
+            </div>
           </div>
         </div>
-        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-4">
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-lg flex items-center justify-center text-xl">
+              <i class="fa-solid fa-puzzle-piece"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
+              <p class="text-2xl font-bold" id="stat-total-updates">0</p>
+            </div>
+          </div>
+          <button onclick="bulkUpdateAllSites()" id="btn-update-all-top" class="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-medium rounded-lg border border-amber-500/30 transition flex items-center space-x-1">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Cập nhật tất cả</span>
+          </button>
+        </div>
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center space-x-3">
           <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center text-xl">
             <i class="fa-solid fa-shield-halved"></i>
           </div>
@@ -114,23 +122,36 @@
         </div>
       </div>
 
-      <!-- Website List -->
-      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
+      <!-- Website List Table -->
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm relative">
         <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
-          <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+          <div class="flex items-center space-x-3">
+            <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
+            <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+          </div>
+          <!-- Bulk Action Bar -->
+          <div id="bulk-action-bar" class="hidden flex items-center space-x-2 bg-indigo-950/80 border border-indigo-500/30 px-3 py-1 rounded-lg">
+            <span class="text-xs text-indigo-300 font-medium" id="selected-count-label">Đã chọn 0 website</span>
+            <button onclick="bulkUpdateSelected()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+              <i class="fa-solid fa-wrench"></i>
+              <span>Cập nhật Plugins</span>
+            </button>
+          </div>
         </div>
         
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
               <tr>
-                <th class="px-5 py-3">Tên miền</th>
-                <th class="px-5 py-3">Phiên bản</th>
-                <th class="px-5 py-3">Database</th>
-                <th class="px-5 py-3">SSL</th>
-                <th class="px-5 py-3">Plugins</th>
-                <th class="px-5 py-3 text-right">Thao tác</th>
+                <th class="px-4 py-3 w-8 text-center">
+                  <input type="checkbox" id="check-all" onchange="toggleSelectAll(this)" class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                </th>
+                <th class="px-4 py-3">Tên miền</th>
+                <th class="px-4 py-3">Phiên bản</th>
+                <th class="px-4 py-3">Database</th>
+                <th class="px-4 py-3">SSL</th>
+                <th class="px-4 py-3">Plugins</th>
+                <th class="px-4 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody id="sites-table-body" class="divide-y divide-slate-700/50">
@@ -141,6 +162,33 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- Modal Đổi Phiên Bản PHP -->
+  <div id="modal-php" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+          <i class="fa-brands fa-php text-indigo-400"></i>
+          <span>Chuyển đổi phiên bản PHP</span>
+        </h3>
+        <button onclick="closePHPModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-3.5 text-xs">
+        <p class="text-slate-300">Website: <strong id="php-modal-domain" class="text-white">example.com</strong></p>
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Chọn phiên bản PHP đích</label>
+          <select id="select-php-version" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+            <!-- Dynamically loaded -->
+          </select>
+          <p class="text-[11px] text-slate-400 mt-1">Hệ thống sẽ tự động cập nhật socket FastCGI trong Nginx và reload dịch vụ ngay lập tức.</p>
+        </div>
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" onclick="closePHPModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md">Hủy</button>
+          <button type="button" onclick="submitChangePHP()" id="btn-submit-php" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Tạo Website Mới -->
@@ -161,11 +209,18 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-300 font-medium mb-1">Admin Username</label>
-            <input type="text" id="create-user" value="admin" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-slate-300 font-medium mb-1">Phiên bản WordPress</label>
+            <select id="create-wp-ver" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+              <option value="latest" selected>Mới nhất (Latest)</option>
+              <option value="6.7.1">WordPress 6.7.1</option>
+              <option value="6.6.2">WordPress 6.6.2</option>
+              <option value="6.5.5">WordPress 6.5.5</option>
+              <option value="6.4.5">WordPress 6.4.5</option>
+              <option value="6.2.6">WordPress 6.2.6 (LTS)</option>
+            </select>
           </div>
           <div>
-            <label class="block text-slate-300 font-medium mb-1">PHP Version</label>
+            <label class="block text-slate-300 font-medium mb-1">Phiên bản PHP</label>
             <select id="create-php" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
               <option value="8.2" selected>PHP 8.2</option>
               <option value="8.3">PHP 8.3</option>
@@ -174,9 +229,15 @@
             </select>
           </div>
         </div>
-        <div>
-          <label class="block text-slate-300 font-medium mb-1">Admin Password (để trống để tự sinh)</label>
-          <input type="password" id="create-pass" placeholder="••••••••••••" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Admin Username</label>
+            <input type="text" id="create-user" value="admin" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Admin Password</label>
+            <input type="password" id="create-pass" placeholder="Tự sinh nếu trống" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+          </div>
         </div>
         <div class="flex items-center space-x-2 pt-1">
           <input type="checkbox" id="create-ssl" class="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded">
@@ -224,8 +285,10 @@
 
   <script>
     let currentSites = [];
+    let selectedSiteIds = new Set();
+    let currentPHPChangeSiteId = null;
+    let availablePHPVersions = ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
 
-    // Helper fetch có đính kèm Bearer Token
     async function apiFetch(url, options = {}) {
       const token = localStorage.getItem('wp_control_token');
       const headers = {
@@ -253,6 +316,7 @@
         const res = await apiFetch('/api/auth/me');
         if (res.ok) {
           showAppView();
+          loadPHPVersions();
           loadSites();
         } else {
           showLoginView();
@@ -291,6 +355,7 @@
         if (data.status === 'success' && data.token) {
           localStorage.setItem('wp_control_token', data.token);
           showAppView();
+          loadPHPVersions();
           loadSites();
           showToast('Đăng nhập thành công!', 'success');
         } else {
@@ -310,11 +375,23 @@
       showToast('Đã đăng xuất', 'info');
     }
 
+    async function loadPHPVersions() {
+      try {
+        const res = await apiFetch('/api/system/php-versions');
+        const data = await res.json();
+        if (data.versions && data.versions.length > 0) {
+          availablePHPVersions = data.versions;
+        }
+      } catch (err) {}
+    }
+
     async function loadSites() {
       try {
         const res = await apiFetch('/api/sites');
         const data = await res.json();
         currentSites = data.data || [];
+        selectedSiteIds.clear();
+        updateSelectedCount();
         renderSites(currentSites);
       } catch (err) {
         showToast('Không thể tải danh sách website', 'error');
@@ -330,36 +407,43 @@
       document.getElementById('table-subtitle').innerText = `Tìm thấy ${sites.length} website`;
 
       if (sites.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-5 py-8 text-center text-slate-500">Chưa có website nào. Nhấn "Quét lại VPS" hoặc "+ Thêm Website" để bắt đầu.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-slate-500">Chưa có website nào. Nhấn "Quét lại VPS" hoặc "+ Thêm Website" để bắt đầu.</td></tr>`;
         return;
       }
 
       sites.forEach(s => {
         totalUpdates += (s.pending_updates || 0);
+        const isChecked = selectedSiteIds.has(s.id);
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-700/30 transition';
         tr.innerHTML = `
-          <td class="px-5 py-3.5">
+          <td class="px-4 py-3.5 text-center">
+            <input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''} onchange="toggleSiteSelect(${s.id}, this)" class="site-check w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+          </td>
+          <td class="px-4 py-3.5">
             <div class="font-medium text-white">${s.domain}</div>
             <div class="text-[11px] text-slate-400 font-mono">${s.root_path}</div>
           </td>
-          <td class="px-5 py-3.5">
+          <td class="px-4 py-3.5">
             <span class="inline-block px-2 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300">WP ${s.wp_version || 'N/A'}</span>
-            <span class="inline-block px-2 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300 ml-1">PHP ${s.php_version}</span>
+            <button onclick="openPHPModal(${s.id}, '${s.domain}', '${s.php_version}')" title="Click để đổi phiên bản PHP" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900 transition ml-1">
+              <span>PHP ${s.php_version}</span>
+              <i class="fa-solid fa-pen ml-1 text-[8px] opacity-70"></i>
+            </button>
           </td>
-          <td class="px-5 py-3.5 font-mono text-[11px] text-slate-400">${s.db_name || '-'}</td>
-          <td class="px-5 py-3.5">
+          <td class="px-4 py-3.5 font-mono text-[11px] text-slate-400">${s.db_name || '-'}</td>
+          <td class="px-4 py-3.5">
             ${s.ssl_active 
               ? '<span class="inline-flex items-center text-emerald-400 text-[11px]"><i class="fa-solid fa-lock mr-1"></i> HTTPS</span>' 
               : '<span class="inline-flex items-center text-slate-400 text-[11px]">HTTP</span>'}
           </td>
-          <td class="px-5 py-3.5">
+          <td class="px-4 py-3.5">
             <button onclick="openPluginDrawer(${s.id})" class="text-indigo-400 hover:text-indigo-300 underline font-medium">
               ${s.total_plugins || 0} plugins
             </button>
             ${s.pending_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.pending_updates} update</span>` : ''}
           </td>
-          <td class="px-5 py-3.5 text-right space-x-1.5">
+          <td class="px-4 py-3.5 text-right space-x-1.5">
             <button onclick="magicLogin(${s.id})" title="Đăng nhập 1-click vào wp-admin" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </button>
@@ -372,6 +456,120 @@
       });
 
       document.getElementById('stat-total-updates').innerText = totalUpdates;
+    }
+
+    function toggleSelectAll(masterCheckbox) {
+      if (masterCheckbox.checked) {
+        currentSites.forEach(s => selectedSiteIds.add(s.id));
+      } else {
+        selectedSiteIds.clear();
+      }
+      renderSites(currentSites);
+      updateSelectedCount();
+    }
+
+    function toggleSiteSelect(siteId, checkbox) {
+      if (checkbox.checked) {
+        selectedSiteIds.add(siteId);
+      } else {
+        selectedSiteIds.delete(siteId);
+      }
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      const count = selectedSiteIds.size;
+      const bar = document.getElementById('bulk-action-bar');
+      const label = document.getElementById('selected-count-label');
+      if (count > 0) {
+        bar.classList.remove('hidden');
+        label.innerText = `Đã chọn ${count} website`;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    async function bulkUpdateSelected() {
+      if (selectedSiteIds.size === 0) return;
+      const ids = Array.from(selectedSiteIds);
+      showToast(`Đang cập nhật plugin cho ${ids.length} website...`, 'info');
+
+      try {
+        const res = await apiFetch('/api/sites/bulk-update-plugins', {
+          method: 'POST',
+          body: JSON.stringify({ site_ids: ids })
+        });
+        const data = await res.json();
+        showToast(`Hoàn tất cập nhật ${data.success_count}/${data.total_sites} website!`, 'success');
+        loadSites();
+      } catch (err) {
+        showToast('Lỗi khi cập nhật hàng loạt', 'error');
+      }
+    }
+
+    async function bulkUpdateAllSites() {
+      showToast('Đang cập nhật tất cả plugin trên toàn bộ VPS...', 'info');
+      try {
+        const res = await apiFetch('/api/sites/bulk-update-plugins', {
+          method: 'POST',
+          body: JSON.stringify({ site_ids: [] })
+        });
+        const data = await res.json();
+        showToast(`Đã cập nhật plugin cho ${data.success_count} website có bản cập nhật!`, 'success');
+        loadSites();
+      } catch (err) {
+        showToast('Lỗi cập nhật', 'error');
+      }
+    }
+
+    function openPHPModal(siteId, domain, currentPHP) {
+      currentPHPChangeSiteId = siteId;
+      document.getElementById('php-modal-domain').innerText = domain;
+      const select = document.getElementById('select-php-version');
+      select.innerHTML = '';
+
+      availablePHPVersions.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.innerText = `PHP ${v}`;
+        if (v === currentPHP) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('modal-php').classList.remove('hidden');
+    }
+
+    function closePHPModal() {
+      document.getElementById('modal-php').classList.add('hidden');
+      currentPHPChangeSiteId = null;
+    }
+
+    async function submitChangePHP() {
+      if (!currentPHPChangeSiteId) return;
+      const newVersion = document.getElementById('select-php-version').value;
+      const btn = document.getElementById('btn-submit-php');
+      btn.innerText = 'Đang chuyển...';
+      btn.disabled = true;
+
+      try {
+        const res = await apiFetch(`/api/sites/${currentPHPChangeSiteId}/change-php`, {
+          method: 'POST',
+          body: JSON.stringify({ php_version: newVersion })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast(data.message, 'success');
+          closePHPModal();
+          loadSites();
+        } else {
+          showToast(data.error || 'Đổi PHP thất bại', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối', 'error');
+      } finally {
+        btn.innerText = 'Lưu thay đổi';
+        btn.disabled = false;
+      }
     }
 
     async function scanVPS() {
@@ -526,6 +724,7 @@
         site_title: document.getElementById('create-title').value,
         admin_user: document.getElementById('create-user').value,
         admin_password: document.getElementById('create-pass').value,
+        wp_version: document.getElementById('create-wp-ver').value,
         php_version: document.getElementById('create-php').value,
         enable_ssl: document.getElementById('create-ssl').checked
       };
@@ -571,7 +770,7 @@
       }, 3500);
     }
 
-    // Kiểm tra đăng nhập khi mở trang
+    // Khởi chạy kiểm tra đăng nhập
     checkAuth();
   </script>
 </body>

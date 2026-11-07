@@ -37,6 +37,7 @@ type CreateSiteRequest struct {
 	AdminPassword string `json:"admin_password"`
 	AdminEmail    string `json:"admin_email"`
 	PHPVersion    string `json:"php_version"`
+	WPVersion     string `json:"wp_version"`
 	EnableSSL     bool   `json:"enable_ssl"`
 }
 
@@ -104,9 +105,18 @@ func (p *Provisioner) CreateSite(req CreateSiteRequest) (*CreateSiteResponse, er
 		log.Printf("[Provisioner Cảnh Báo] Lỗi tạo MySQL: %v (tiếp tục với cấu hình giả lập nếu trong dev)", err)
 	}
 
-	// 3. Tải & Cài đặt WordPress bằng WP-CLI
-	log.Printf("[Provisioner] Đang tải mã nguồn WordPress sạch...")
-	_, _ = p.wpcli.Run(rootPath, "www-data", "core", "download", "--locale=vi")
+	// 3. Tải & Cài đặt WordPress bằng WP-CLI theo phiên bản được chọn
+	wpVer := strings.TrimSpace(req.WPVersion)
+	if wpVer == "" || wpVer == "latest" {
+		wpVer = "6.7.1"
+	}
+	log.Printf("[Provisioner] Đang tải mã nguồn WordPress phiên bản %s...", wpVer)
+
+	downloadArgs := []string{"core", "download", "--locale=vi"}
+	if req.WPVersion != "" && req.WPVersion != "latest" {
+		downloadArgs = append(downloadArgs, fmt.Sprintf("--version=%s", req.WPVersion))
+	}
+	_, _ = p.wpcli.Run(rootPath, "www-data", downloadArgs...)
 	_, _ = p.wpcli.Run(rootPath, "www-data", "config", "create",
 		fmt.Sprintf("--dbname=%s", dbName),
 		fmt.Sprintf("--dbuser=%s", dbUser),
@@ -139,16 +149,17 @@ func (p *Provisioner) CreateSite(req CreateSiteRequest) (*CreateSiteResponse, er
 	query := `
 	INSERT INTO sites (
 		domain, root_path, php_version, wp_version, owner_user, db_name, db_user, ssl_active, is_discovered, status
-	) VALUES (?, ?, ?, '6.7.1', 'www-data', ?, ?, ?, 0, 'active')
+	) VALUES (?, ?, ?, ?, 'www-data', ?, ?, ?, 0, 'active')
 	ON CONFLICT(domain) DO UPDATE SET
 		root_path = excluded.root_path,
 		php_version = excluded.php_version,
+		wp_version = excluded.wp_version,
 		db_name = excluded.db_name,
 		db_user = excluded.db_user,
 		ssl_active = excluded.ssl_active,
 		updated_at = CURRENT_TIMESTAMP;
 	`
-	_, _ = p.db.Exec(query, domain, rootPath, phpVer, dbName, dbUser, sslActive)
+	_, _ = p.db.Exec(query, domain, rootPath, phpVer, wpVer, dbName, dbUser, sslActive)
 
 	log.Printf("[Provisioner Thành Công] Website %s đã được tạo hoàn tất!", domain)
 	return &CreateSiteResponse{
