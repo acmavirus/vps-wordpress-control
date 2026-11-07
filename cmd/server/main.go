@@ -18,6 +18,8 @@ import (
 	"vps-wordpress-control/internal/web"
 )
 
+var Version = "v1.0.14"
+
 type HealthResponse struct {
 	Status    string `json:"status"`
 	AppName   string `json:"app_name"`
@@ -83,7 +85,7 @@ func main() {
 		json.NewEncoder(w).Encode(HealthResponse{
 			Status:    "ok",
 			AppName:   cfg.AppName,
-			Version:   "1.0.0",
+			Version:   Version,
 			Timestamp: time.Now().Format(time.RFC3339),
 		})
 	})

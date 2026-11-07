@@ -60,7 +60,10 @@
             <i class="fa-brands fa-wordpress"></i>
           </div>
           <div>
-            <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
+            <div class="flex items-center space-x-2">
+              <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
+              <span id="panel-version-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v1.0.14</span>
+            </div>
             <span class="text-xs text-slate-400">Lightweight Dedicated Panel</span>
           </div>
         </div>
@@ -142,11 +145,15 @@
               <i class="fa-solid fa-puzzle-piece"></i>
               <span>Cập nhật Plugins</span>
             </button>
+            <button onclick="bulkUpdateThemesSelected()" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+              <i class="fa-solid fa-paintbrush"></i>
+              <span>Cập nhật Themes</span>
+            </button>
             <button onclick="bulkCoreUpdateSelected()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-brands fa-wordpress"></i>
               <span>Cập nhật WP Core</span>
             </button>
-            <button onclick="bulkOpenPHPModal()" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
+            <button onclick="bulkOpenPHPModal()" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-brands fa-php"></i>
               <span>Đổi PHP</span>
             </button>
@@ -415,6 +422,7 @@
           showAppView();
           loadPHPVersions();
           loadSites();
+          loadVersion();
         } else {
           showLoginView();
         }
@@ -458,6 +466,7 @@
           showAppView();
           loadPHPVersions();
           loadSites();
+          loadVersion();
           showToast('Đăng nhập thành công!', 'success');
         } else {
           showToast(data.error || 'Sai tài khoản hoặc mật khẩu', 'error');
@@ -474,6 +483,17 @@
       localStorage.removeItem('wp_control_token');
       showLoginView();
       showToast('Đã đăng xuất', 'info');
+    }
+
+    async function loadVersion() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        if (data.version) {
+          const badge = document.getElementById('panel-version-badge');
+          if (badge) badge.innerText = data.version;
+        }
+      } catch (err) {}
     }
 
     async function loadPHPVersions() {
@@ -640,6 +660,44 @@
       } catch (err) {
         showToast('Lỗi tạo tác vụ cập nhật', 'error');
       }
+    }
+
+    async function bulkUpdateThemesSelected() {
+      if (selectedSiteIds.size === 0) return;
+      const ids = Array.from(selectedSiteIds);
+
+      openStepTaskModal('Cập nhật Themes Hàng Loạt', `Bắt đầu cập nhật Themes cho ${ids.length} website đã chọn...`);
+
+      let successCount = 0;
+      let failedList = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const site = currentSites.find(s => s.id === id);
+        const domain = site ? site.domain : `Site #${id}`;
+
+        updateStepTaskProgress(i, ids.length, `Đang cập nhật themes [${i + 1}/${ids.length}]: ${domain}...`);
+
+        try {
+          const res = await apiFetch(`/api/sites/${id}/themes/update-all`, { method: 'POST' });
+          const data = await res.json();
+          if (data.status === 'success') {
+            successCount++;
+          } else {
+            failedList.push(`${domain}: ${data.error || 'Thất bại'}`);
+          }
+        } catch (e) {
+          failedList.push(`${domain}: Lỗi kết nối`);
+        }
+      }
+
+      updateStepTaskProgress(ids.length, ids.length, 'Hoàn thành!');
+      let resultMsg = `Hoàn tất cập nhật Themes! Thành công: ${successCount}/${ids.length} website.`;
+      if (failedList.length > 0) {
+        resultMsg += `\nLỗi: ` + failedList.join(', ');
+      }
+      completeStepTaskModal('Cập nhật Themes Hàng Loạt', resultMsg, successCount > 0);
+      loadSites();
     }
 
     // ==================== LOCAL STEPPED TASK MODAL ====================
@@ -1224,19 +1282,20 @@
 
     async function updateAllPluginsDrawer() {
       if (!currentDrawerSiteId) return;
-      showToast('Đang cập nhật tất cả plugin...', 'info');
+      openStepTaskModal('Cập nhật Tất Cả Plugins', 'Đang cập nhật toàn bộ plugins của website...');
+      updateStepTaskProgress(1, 2, 'Đang chạy wp plugin update --all...');
       try {
         const res = await apiFetch(`/api/sites/${currentDrawerSiteId}/plugins/update-all`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast('Đã cập nhật tất cả plugin thành công!', 'success');
+          completeStepTaskModal('Cập nhật Tất Cả Plugins', 'Đã cập nhật toàn bộ plugins thành công!', true);
           openPluginDrawer(currentDrawerSiteId);
           loadSites();
         } else {
-          showToast(data.error || 'Cập nhật thất bại', 'error');
+          completeStepTaskModal('Cập nhật Tất Cả Plugins', data.error || 'Cập nhật thất bại', false);
         }
       } catch (err) {
-        showToast('Lỗi kết nối', 'error');
+        completeStepTaskModal('Cập nhật Tất Cả Plugins', 'Lỗi kết nối khi cập nhật plugins', false);
       }
     }
 
@@ -1278,6 +1337,7 @@
         } else {
           data.themes.forEach(t => {
             const hasUpdate = t.has_update == 1;
+            const isActive = t.status === 'active';
             const div = document.createElement('div');
             div.className = 'py-3 flex items-center justify-between gap-2';
             div.innerHTML = `
@@ -1285,9 +1345,10 @@
                 <p class="font-medium text-white text-xs flex items-center space-x-1.5">
                   <i class="fa-solid fa-paintbrush text-purple-400 text-[10px]"></i>
                   <span>${t.name}</span>
+                  ${isActive ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Đang dùng</span>` : ''}
                   ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">update</span>` : ''}
                 </p>
-                <p class="text-[10px] text-slate-400 font-mono mt-0.5">slug: ${t.slug} · v${t.version || 'N/A'}</p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">slug: ${t.slug} · v${t.version || 'N/A'}${t.update_version ? ` → v${t.update_version}` : ''}</p>
               </div>
               <div class="flex items-center space-x-1.5 shrink-0">
                 ${hasUpdate ? `<button onclick="updateTheme(${siteId}, '${t.slug}')" class="px-2.5 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-1 font-medium">
@@ -1346,19 +1407,20 @@
     }
 
     async function updatePlugin(siteId, slug) {
-      showToast(`Đang cập nhật plugin ${slug}...`, 'info');
+      openStepTaskModal(`Cập nhật Plugin: ${slug}`, `Đang tải và cập nhật plugin ${slug}...`);
+      updateStepTaskProgress(1, 2, `Đang chạy wp plugin update ${slug}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/plugins/${slug}/update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(`Cập nhật ${slug} thành công!`, 'success');
+          completeStepTaskModal(`Cập nhật Plugin: ${slug}`, `Đã cập nhật plugin ${slug} thành công!`, true);
           openPluginDrawer(siteId);
           loadSites();
         } else {
-          showToast(data.error || 'Cập nhật thất bại', 'error');
+          completeStepTaskModal(`Cập nhật Plugin: ${slug}`, data.error || 'Cập nhật thất bại', false);
         }
       } catch (err) {
-        showToast('Lỗi khi gửi yêu cầu cập nhật', 'error');
+        completeStepTaskModal(`Cập nhật Plugin: ${slug}`, 'Lỗi khi gửi yêu cầu cập nhật', false);
       }
     }
 

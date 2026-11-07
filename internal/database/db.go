@@ -117,7 +117,7 @@ func runMigrations(db *sql.DB) error {
 		return err
 	}
 
-	// Dọn dẹp dữ liệu trùng lặp cũ nếu có trong site_plugins
+	// Dọn dẹp dữ liệu trùng lặp cũ nếu có trong site_plugins và site_themes
 	cleanupDuplicates := `
 	DELETE FROM site_plugins
 	WHERE id NOT IN (
@@ -126,6 +126,14 @@ func runMigrations(db *sql.DB) error {
 		GROUP BY site_id, slug
 	);
 	CREATE UNIQUE INDEX IF NOT EXISTS uq_site_plugins_site_slug ON site_plugins(site_id, slug);
+
+	DELETE FROM site_themes
+	WHERE id NOT IN (
+		SELECT MIN(id)
+		FROM site_themes
+		GROUP BY site_id, slug
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS uq_site_themes_site_slug ON site_themes(site_id, slug);
 	`
 	_, _ = db.Exec(cleanupDuplicates)
 	return nil
