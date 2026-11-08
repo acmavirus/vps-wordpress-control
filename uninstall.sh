@@ -61,3 +61,4 @@ echo -e ""
 echo -e "${GREEN}======================================================${NC}"
 echo -e "${GREEN}  ĐÃ GỠ CÀI ĐẶT SẠCH SẼ HOÀN TOÀN VPS WORDPRESS CONTROL  ${NC}"
 echo -e "${GREEN}======================================================${NC}"
+
