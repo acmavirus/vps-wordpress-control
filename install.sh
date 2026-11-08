@@ -43,22 +43,22 @@ case $ARCH in
         exit 1
         ;;
 esac
-echo -e "${GREEN}[1/6] Phát hiện kiến trúc: ${BIN_ARCH}${NC}"
+echo -e "${GREEN}[1/7] Phát hiện kiến trúc: ${BIN_ARCH}${NC}"
 
 # 3. Cài đặt các gói phụ trợ cần thiết
-echo -e "${GREEN}[2/6] Kiểm tra và cập nhật các gói hệ thống...${NC}"
+echo -e "${GREEN}[2/7] Kiểm tra và cập nhật các gói hệ thống...${NC}"
 apt-get update -qq
 apt-get install -y -qq curl tar openssl ufw > /dev/null 2>&1
 
 # 4. Tạo cấu trúc thư mục cài đặt
-echo -e "${GREEN}[3/6] Thiết lập thư mục tại ${INSTALL_DIR}...${NC}"
+echo -e "${GREEN}[3/7] Thiết lập thư mục tại ${INSTALL_DIR}...${NC}"
 mkdir -p ${INSTALL_DIR}/bin
 mkdir -p ${INSTALL_DIR}/data
 mkdir -p ${INSTALL_DIR}/logs
 mkdir -p ${INSTALL_DIR}/templates
 
 # 5. Tải file thực thi (Binary Release) từ GitHub
-echo -e "${GREEN}[4/6] Đang tải bản phát hành mới nhất từ GitHub (${GITHUB_REPO})...${NC}"
+echo -e "${GREEN}[4/7] Đang tải bản phát hành mới nhất từ GitHub (${GITHUB_REPO})...${NC}"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/wp-control-linux-${BIN_ARCH}.tar.gz"
 
 TMP_DIR=$(mktemp -d)
@@ -71,25 +71,58 @@ else
     echo -e "${YELLOW}Nếu bạn đang tự build mã nguồn, vui lòng đặt binary tại: ${INSTALL_DIR}/bin/wp-control${NC}"
 fi
 
-# 6. Tạo file cấu hình .env ngẫu nhiên an toàn nếu chưa có
+# 6. Kiểm tra cổng mạng khả dụng và sinh/cập nhật file cấu hình .env
+echo -e "${GREEN}[5/7] Kiểm tra cổng mạng khả dụng và cấu hình .env...${NC}"
 ENV_FILE="${INSTALL_DIR}/.env"
+
+# Hàm kiểm tra cổng xem có tiến trình nào đang chiếm dụng không
+is_port_in_use() {
+    local check_port=$1
+    if command -v ss >/dev/null 2>&1; then
+        ss -tulpn 2>/dev/null | grep -qE "[:.]${check_port}\b"
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -tulpn 2>/dev/null | grep -qE "[:.]${check_port}\b"
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:${check_port} -sTCP:LISTEN >/dev/null 2>&1
+    else
+        (timeout 1 bash -c "cat < /dev/null > /dev/tcp/127.0.0.1/${check_port}") 2>/dev/null
+    fi
+}
+
+# Tạm dừng service cũ nếu đang chạy để không tự xung đột cổng với chính nó
+systemctl stop ${SERVICE_NAME} 2>/dev/null || true
+
+TARGET_PORT="${PORT:-$DEFAULT_PORT}"
+# Nếu .env đã tồn tại từ trước, đọc cổng đã lưu ra kiểm tra
+if [ -f "$ENV_FILE" ]; then
+    SAVED_PORT=$(grep -E "^APP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2 | tr -d '"' | tr -d ' ' || true)
+    if [ -n "$SAVED_PORT" ]; then
+        TARGET_PORT="$SAVED_PORT"
+    fi
+fi
+
+# Tự động quét tìm cổng khả dụng nếu cổng mục tiêu bị dịch vụ khác chiếm dụng
+ORIGINAL_PORT="$TARGET_PORT"
+while is_port_in_use "$TARGET_PORT"; do
+    echo -e "${YELLOW}  [Cảnh báo] Cổng ${TARGET_PORT} đang bị chiếm dụng bởi tiến trình khác.${NC}"
+    TARGET_PORT=$((TARGET_PORT + 1))
+    echo -e "${YELLOW}  → Tự động quét kiểm tra cổng tiếp theo: ${TARGET_PORT}...${NC}"
+done
+
+if [ "$TARGET_PORT" -ne "$ORIGINAL_PORT" ]; then
+    echo -e "${GREEN}  ✓ Đã tự động chọn cổng khả dụng mới: ${TARGET_PORT} (thay cho cổng cũ ${ORIGINAL_PORT})${NC}"
+else
+    echo -e "${GREEN}  ✓ Cổng ${TARGET_PORT} khả dụng.${NC}"
+fi
+
 if [ ! -f "$ENV_FILE" ]; then
-    echo -e "${GREEN}[5/6] Sinh cấu hình bảo mật .env...${NC}"
-
-    # Tự động tìm cổng khả dụng nếu cổng mặc định đã bị dịch vụ khác chiếm dụng
-    APP_PORT="${PORT:-$DEFAULT_PORT}"
-    while ss -tulpn 2>/dev/null | grep -q ":${APP_PORT} "; do
-        echo -e "${YELLOW}[Cảnh báo] Cổng ${APP_PORT} đã bị chiếm. Tự động kiểm tra cổng tiếp theo...${NC}"
-        APP_PORT=$((APP_PORT + 1))
-    done
-
     RANDOM_JWT=$(openssl rand -hex 24)
     RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
     cat <<EOF > "$ENV_FILE"
 APP_NAME="VPS WordPress Control"
 APP_ENV=production
-APP_PORT=${APP_PORT}
+APP_PORT=${TARGET_PORT}
 APP_HOST=0.0.0.0
 
 JWT_SECRET=${RANDOM_JWT}
@@ -105,14 +138,15 @@ WWW_ROOT_DIR=/var/www
 LOG_DIR=${INSTALL_DIR}/logs
 EOF
     chmod 600 "$ENV_FILE"
+else
+    # Cập nhật cổng mới vào .env nếu có thay đổi
+    sed -i "s/^APP_PORT=.*/APP_PORT=${TARGET_PORT}/" "$ENV_FILE"
 fi
 
-# Đọc cổng đang cấu hình từ .env
-ACTIVE_PORT=$(grep "APP_PORT=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d ' ')
-ACTIVE_PORT=${ACTIVE_PORT:-$DEFAULT_PORT}
+ACTIVE_PORT="$TARGET_PORT"
 
 # 7. Cấu hình Systemd Service
-echo -e "${GREEN}[6/6] Cấu hình Systemd Service (${SERVICE_NAME})...${NC}"
+echo -e "${GREEN}[6/7] Cấu hình Systemd Service (${SERVICE_NAME})...${NC}"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 cat <<EOF > "$SERVICE_FILE"
@@ -138,12 +172,39 @@ systemctl daemon-reload
 if [ -f "${INSTALL_DIR}/bin/wp-control" ]; then
     systemctl enable ${SERVICE_NAME} --quiet
     systemctl restart ${SERVICE_NAME}
-    echo -e "${GREEN}✓ Dịch vụ đã được kích hoạt và khởi động thành công!${NC}"
+    sleep 1
+
+    if systemctl is-active --quiet ${SERVICE_NAME}; then
+        echo -e "${GREEN}  ✓ Dịch vụ đã được kích hoạt và khởi động thành công!${NC}"
+    else
+        echo -e "${RED}  ✗ Dịch vụ khởi động thất bại. Log chi tiết:${NC}"
+        journalctl -u ${SERVICE_NAME} -n 10 --no-pager
+    fi
 fi
 
-# Mở cổng Firewall nếu UFW đang bật
-if ufw status 2>/dev/null | grep -q "Status: active"; then
-    ufw allow ${ACTIVE_PORT}/tcp > /dev/null 2>&1
+# 8. Mở cổng Firewall (UFW & Firewalld)
+echo -e "${GREEN}[7/7] Cấu hình tường lửa Firewall cho cổng ${ACTIVE_PORT}/tcp...${NC}"
+FIREWALL_CONFIGURED=0
+
+if command -v ufw >/dev/null 2>&1; then
+    if ufw status 2>/dev/null | grep -q "Status: active"; then
+        ufw allow ${ACTIVE_PORT}/tcp >/dev/null 2>&1
+        echo -e "${GREEN}  ✓ Đã mở cổng ${ACTIVE_PORT}/tcp trên tường lửa UFW.${NC}"
+        FIREWALL_CONFIGURED=1
+    else
+        echo -e "${BLUE}  ℹ Tường lửa UFW đang ở trạng thái tắt (inactive).${NC}"
+    fi
+fi
+
+if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
+    firewall-cmd --permanent --add-port=${ACTIVE_PORT}/tcp >/dev/null 2>&1
+    firewall-cmd --reload >/dev/null 2>&1
+    echo -e "${GREEN}  ✓ Đã mở cổng ${ACTIVE_PORT}/tcp trên Firewalld.${NC}"
+    FIREWALL_CONFIGURED=1
+fi
+
+if [ $FIREWALL_CONFIGURED -eq 0 ]; then
+    echo -e "${GREEN}  ✓ Tường lửa không chặn cổng hoặc đã được cấu hình mở.${NC}"
 fi
 
 # Lấy địa chỉ IP máy chủ

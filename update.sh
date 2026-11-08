@@ -65,8 +65,17 @@ tar -xzf "${TMP_FILE}" -C "${INSTALL_DIR}/bin/"
 chmod +x "${INSTALL_DIR}/bin/wp-control"
 rm -f "${TMP_FILE}"
 
-echo -e "${GREEN}[3/3] Khởi động lại dịch vụ...${NC}"
+echo -e "${GREEN}[3/3] Khởi động lại dịch vụ và kiểm tra Firewall...${NC}"
 systemctl start "${SERVICE_NAME}"
+
+# Đảm bảo cổng trong .env được mở trên UFW nếu UFW đang bật
+ENV_FILE="${INSTALL_DIR}/.env"
+if [ -f "$ENV_FILE" ]; then
+    ACTIVE_PORT=$(grep -E "^APP_PORT=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2 | tr -d '"' | tr -d ' ' || true)
+    if [ -n "$ACTIVE_PORT" ] && command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+        ufw allow ${ACTIVE_PORT}/tcp >/dev/null 2>&1
+    fi
+fi
 
 if systemctl is-active --quiet "${SERVICE_NAME}"; then
     echo -e "${GREEN}✓ CẬP NHẬT THÀNH CÔNG! Dịch vụ đang hoạt động ổn định.${NC}"
