@@ -75,13 +75,21 @@ fi
 ENV_FILE="${INSTALL_DIR}/.env"
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${GREEN}[5/6] Sinh cấu hình bảo mật .env...${NC}"
+
+    # Tự động tìm cổng khả dụng nếu cổng mặc định đã bị dịch vụ khác chiếm dụng
+    APP_PORT="${PORT:-$DEFAULT_PORT}"
+    while ss -tulpn 2>/dev/null | grep -q ":${APP_PORT} "; do
+        echo -e "${YELLOW}[Cảnh báo] Cổng ${APP_PORT} đã bị chiếm. Tự động kiểm tra cổng tiếp theo...${NC}"
+        APP_PORT=$((APP_PORT + 1))
+    done
+
     RANDOM_JWT=$(openssl rand -hex 24)
     RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
     cat <<EOF > "$ENV_FILE"
 APP_NAME="VPS WordPress Control"
 APP_ENV=production
-APP_PORT=${DEFAULT_PORT}
+APP_PORT=${APP_PORT}
 APP_HOST=0.0.0.0
 
 JWT_SECRET=${RANDOM_JWT}
@@ -98,6 +106,10 @@ LOG_DIR=${INSTALL_DIR}/logs
 EOF
     chmod 600 "$ENV_FILE"
 fi
+
+# Đọc cổng đang cấu hình từ .env
+ACTIVE_PORT=$(grep "APP_PORT=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d ' ')
+ACTIVE_PORT=${ACTIVE_PORT:-$DEFAULT_PORT}
 
 # 7. Cấu hình Systemd Service
 echo -e "${GREEN}[6/6] Cấu hình Systemd Service (${SERVICE_NAME})...${NC}"
@@ -130,8 +142,8 @@ if [ -f "${INSTALL_DIR}/bin/wp-control" ]; then
 fi
 
 # Mở cổng Firewall nếu UFW đang bật
-if ufw status | grep -q "Status: active"; then
-    ufw allow ${DEFAULT_PORT}/tcp > /dev/null 2>&1
+if ufw status 2>/dev/null | grep -q "Status: active"; then
+    ufw allow ${ACTIVE_PORT}/tcp > /dev/null 2>&1
 fi
 
 # Lấy địa chỉ IP máy chủ
@@ -142,7 +154,7 @@ echo -e ""
 echo -e "${GREEN}======================================================${NC}"
 echo -e "${GREEN}       CÀI ĐẶT THÀNH CÔNG VPS WORDPRESS CONTROL       ${NC}"
 echo -e "${GREEN}======================================================${NC}"
-echo -e "Địa chỉ truy cập Panel : ${BLUE}http://${SERVER_IP}:${DEFAULT_PORT}${NC}"
+echo -e "Địa chỉ truy cập Panel : ${BLUE}http://${SERVER_IP}:${ACTIVE_PORT}${NC}"
 echo -e "Tài khoản quản trị     : ${YELLOW}admin${NC}"
 echo -e "Mật khẩu ngẫu nhiên    : ${YELLOW}${ADMIN_PASS}${NC}"
 echo -e "Thư mục cài đặt        : ${INSTALL_DIR}"
