@@ -1,85 +1,123 @@
 # VPS WordPress Control 🚀
 
-> **Lightweight Dedicated Control Panel** dành riêng cho việc quản trị nhiều website WordPress trên VPS (Ubuntu / Debian).
+> **Lightweight Dedicated Control Panel** built specifically for managing multiple WordPress websites on VPS (Ubuntu / Debian).
 
 ![Go Version](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat&logo=go)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-blue)
+![Languages](https://img.shields.io/badge/Languages-10%20Supported-purple)
 
 ---
 
-## ✨ Tính Năng Nổi Bật
+## ✨ Key Features
 
-1. **Auto-Discovery Engine (Tự động quét):** Cài lên VPS đang chạy, tự động phát hiện toàn bộ website WordPress qua cấu hình Nginx (`/etc/nginx/sites-enabled/`) và thư mục web, đọc `wp-config.php`, phân tích plugin & theme mà không làm xáo trộn dữ liệu cũ.
-2. **WordPress Centralized Manager:** Quản lý tập trung Plugin/Theme/Core, cập nhật hàng loạt 1-click, bật/tắt plugin trực tiếp từ Web UI để khắc phục màn hình trắng (WSOD).
-3. **Magic Login (SSO 1-Click):** Tạo đường dẫn đăng nhập quản trị tạm thời, truy cập thẳng vào `wp-admin` mà không cần nhớ mật khẩu.
-4. **Hệ Thống Quét Mã Độc Toàn Diện:**
-   - **Lớp Checksum:** Xác thực tính toàn vẹn mã nguồn Core & Plugins với kho lưu trữ chính thức WordPress.org (`wp core verify-checksums` & `wp plugin verify-checksums`).
-   - **Lớp Uploads:** Phát hiện và cảnh báo tức thì các file script thực thi PHP (`.php`, `.phtml`, `.phar`...) nằm trong thư mục `wp-content/uploads/`.
-   - **Lớp Root Anomaly:** Nhận diện các file webshell phổ biến đặt ngoài thư mục gốc (`wso.php`, `c99.php`, `shell.php`...).
-   - **Lớp Pattern Signature:** Quét regex chuyên sâu tìm backdoor, hàm mã hoá nguy hiểm (`eval(base64_decode)`, `gzinflate`, `assert`, `RCE`).
-5. **Async Job Runner & Real-time Progress (SSE):** Quản lý các tác vụ tốn thời gian (quét toàn VPS, cập nhật hàng loạt website) với thanh tiến trình trực quan theo thời gian thực qua Server-Sent Events.
-6. **Sao Lưu & Khôi Phục Nhanh (Backup Engine):** 1-click sao lưu toàn bộ Database & `wp-content` thành file `.tar.gz`, hỗ trợ khôi phục tức thì hoặc tải về.
-7. **Tạo Website Mới 1-Click (Site Provisioning):** Tự động tạo thư mục web, tạo Database MariaDB, tải mã nguồn WordPress sạch theo phiên bản tùy chọn, tạo VirtualHost Nginx chuẩn bảo mật và cấp chứng chỉ Let's Encrypt SSL.
-8. **Siêu Nhẹ & Bảo Mật Cao:** Viết bằng **Golang**, đóng gói trọn vẹn thành 1 file binary duy nhất (~15MB), tiêu thụ RAM < 30MB, hỗ trợ Whitelist IP (`ALLOWED_IPS`), token HMAC-SHA256, nhúng sẵn Web Dashboard giao diện TailwindCSS Dark Mode.
+1. **Auto-Discovery Engine:**
+   - Automatically detects all existing WordPress sites by scanning Nginx configuration (`/etc/nginx/sites-enabled/`) and web directories.
+   - Parses `wp-config.php`, inspects active/inactive plugins, themes, and PHP versions without altering existing site data or causing downtime.
+
+2. **Multi-Language Support (i18n):**
+   - Built-in support for **10 major languages**: 🇺🇸 English (*Default*), 🇻🇳 Vietnamese, 🇨🇳 Simplified Chinese, 🇯🇵 Japanese, 🇰🇷 Korean, 🇫🇷 French, 🇩🇪 German, 🇪🇸 Spanish, 🇷🇺 Russian, and 🇧🇷 Portuguese.
+   - Instant language switching without page reloads, available on both the Login screen and Dashboard.
+
+3. **Centralized WordPress Management:**
+   - **Bulk Actions:** 1-click batch update for Plugins, Themes, and WordPress Core across selected or all sites.
+   - **Fast PHP Switching:** Switch PHP versions (7.4 to 8.4) individually or in bulk; automatically updates Nginx FastCGI sockets and reloads services.
+   - **SSL Automation:** Automated Let's Encrypt SSL certificate provisioning and Nginx HTTPS reconfiguration.
+   - **Plugin Control:** Toggle plugins on/off directly from the Web UI to quickly resolve White Screen of Death (WSOD) errors.
+
+4. **1-Click Magic Login (SSO):**
+   - Generates secure, one-time admin login URLs allowing direct entry to `wp-admin` without remembering passwords.
+
+5. **Multi-Layer Malware Scanner:**
+   - **Checksum Verification:** Validates Core and Plugin integrity against official WordPress.org repositories (`wp core verify-checksums` & `wp plugin verify-checksums`).
+   - **Uploads Sanitization:** Detects and flags dangerous executable scripts (`.php`, `.phtml`, `.phar`) inside `wp-content/uploads/`.
+   - **Root Anomaly Detection:** Flags common webshells and suspicious files placed outside root directories (`wso.php`, `c99.php`, `shell.php`).
+   - **Pattern Matching:** Deep regex inspection scanning for backdoors, obfuscation, and dangerous functions (`eval(base64_decode)`, `gzinflate`, `assert`, `RCE`).
+
+6. **Fast Backup & Restore:**
+   - 1-click complete archive of Database & `wp-content` into compressed `.tar.gz` files.
+   - Instant rollback and restore directly from the web panel.
+
+7. **1-Click Site Provisioning:**
+   - Creates new WordPress installations from scratch: prepares web directory, sets up MariaDB database and user, configures secure Nginx VirtualHost, and generates SSL.
+
+8. **Ultra-Lightweight & Secure:**
+   - Written in **Go 1.23**, compiled into a single static binary (~15MB), RAM consumption < 30MB.
+   - Smart automated port conflict resolution and firewall configuration (UFW & Firewalld).
+   - Embedded responsive Tailwind CSS dark-mode dashboard — zero external web server dependencies.
 
 ---
 
-## ⚡ Cài Đặt Nhanh Trên VPS (1-Click Install)
+## ⚡ Quick 1-Click Installation
 
-Chạy lệnh sau trên VPS của bạn (yêu cầu quyền `root` trên Ubuntu 20.04/22.04/24.04 hoặc Debian 11/12):
+Run the following command on your VPS (requires `root` privileges on Ubuntu 20.04/22.04/24.04 or Debian 11/12):
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/acmavirus/vps-wordpress-control/main/install.sh | sudo bash
 ```
 
-Sau khi cài đặt hoàn tất, script sẽ cung cấp:
-* **Địa chỉ truy cập:** `http://<IP-VPS>:9090`
-* **Tài khoản quản trị:** `admin`
-* **Mật khẩu ngẫu nhiên:** Được sinh tự động và lưu an toàn tại `/opt/wp-control/.env`.
+The installer will automatically:
+1. Detect your CPU architecture (`amd64` or `arm64`) and download the latest release.
+2. Scan for available network ports (starts with `9090` and auto-increments if occupied).
+3. Automatically configure and allow the selected port on UFW / Firewalld.
+4. Set up the Systemd service and display your access credentials:
+   - **Panel URL:** `http://<YOUR_VPS_IP>:<PORT>`
+   - **Admin Username:** `admin`
+   - **Admin Password:** *Randomly generated and stored securely in `/opt/wp-control/.env`*
 
 ---
 
-## 🔄 Cập Nhật Phiên Bản Mới (1-Click Update)
+## 🔄 1-Click Update
 
-Khi có bản cập nhật mới, chỉ cần chạy đúng **1 dòng lệnh** duy nhất trên VPS:
+To update your panel to the latest version without losing data:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/acmavirus/vps-wordpress-control/main/update.sh | sudo bash
 ```
-*(Script sẽ tự động tải binary mới nhất theo cấu trúc CPU của VPS, ghi đè và khởi động lại dịch vụ `wp-control` trong vòng 3 giây mà không làm mất cấu hình `.env` hay cơ sở dữ liệu)*
+
+*(Downloads the latest binary, replaces the executable, and restarts the service in under 3 seconds while preserving your configuration and database).*
 
 ---
 
-## 🛠 Quản Lý Dịch Vụ Trên VPS
+## 🗑️ 1-Click Complete Uninstall
+
+To completely and cleanly remove VPS WordPress Control from your server:
 
 ```bash
-# Kiểm tra trạng thái dịch vụ
+curl -sSL https://raw.githubusercontent.com/acmavirus/vps-wordpress-control/main/uninstall.sh | sudo bash
+```
+
+---
+
+## 🛠 Service Management
+
+```bash
+# Check service status
 sudo systemctl status wp-control
 
-# Khởi động lại panel
+# Restart the panel
 sudo systemctl restart wp-control
 
-# Xem log hoạt động theo thời gian thực
+# View real-time logs
 sudo journalctl -u wp-control -f
 ```
 
 ---
 
-## 💻 Phát Triển Cục Bộ (Docker Development)
+## 💻 Local Development (Docker)
 
 ```bash
-# 1. Khởi tạo môi trường
+# 1. Prepare environment configuration
 cp .env.example .env
 
-# 2. Khởi chạy bằng Docker Compose
+# 2. Start services with Docker Compose
 docker compose up -d
 
-# 3. Truy cập Dashboard tại
+# 3. Access Dashboard at
 http://localhost:9090
 ```
 
 ---
 
-## 📄 Bản Quyền
-Phát hành theo giấy phép MIT.
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
