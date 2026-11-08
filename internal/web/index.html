@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" class="h-full bg-slate-900 text-slate-100">
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,24 +8,43 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     [x-cloak] { display: none !important; }
+    /* Custom scrollbar for dropdown menus */
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans">
+<body class="h-full flex flex-col font-sans" onclick="handleGlobalClick(event)">
 
-  <!-- MÀN HÌNH ĐĂNG NHẬP (Hiển thị mặc định khi chưa xác thực) -->
-  <div id="login-container" style="display: flex;" class="min-h-full items-center justify-center p-4 bg-slate-900">
+  <!-- MÀN HÌNH ĐĂNG NHẬP -->
+  <div id="login-container" style="display: flex;" class="min-h-full items-center justify-center p-4 bg-slate-900 relative">
+    <!-- Language Selector on Login Screen -->
+    <div class="absolute top-5 right-5">
+      <div class="relative" id="login-lang-dropdown-wrapper">
+        <button type="button" onclick="toggleLoginLangDropdown(event)" id="login-current-lang-btn" class="px-3 py-1.5 text-xs font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 shadow flex items-center space-x-2 transition">
+          <span id="login-current-lang-flag">🇺🇸</span>
+          <span id="login-current-lang-name">English</span>
+          <i class="fa-solid fa-chevron-down text-[9px] opacity-70 ml-0.5"></i>
+        </button>
+        <div id="login-lang-dropdown-menu" class="hidden absolute right-0 mt-1.5 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 divide-y divide-slate-700/50 max-h-72 overflow-y-auto custom-scrollbar">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
     <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl w-full max-w-sm p-8 shadow-2xl backdrop-blur-xl">
       <div class="text-center mb-6">
         <div class="w-12 h-12 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30 mb-3">
           <i class="fa-brands fa-wordpress"></i>
         </div>
-        <h2 class="text-lg font-bold text-white tracking-tight">VPS WordPress Control</h2>
-        <p class="text-xs text-slate-400 mt-1">Đăng nhập để quản trị máy chủ</p>
+        <h2 class="text-lg font-bold text-white tracking-tight" data-i18n="login_title">VPS WordPress Control</h2>
+        <p class="text-xs text-slate-400 mt-1" data-i18n="login_subtitle">Sign in to manage your server</p>
       </div>
 
       <form onsubmit="handleLogin(event)" class="space-y-4 text-xs">
         <div>
-          <label class="block text-slate-300 font-medium mb-1">Tài khoản</label>
+          <label class="block text-slate-300 font-medium mb-1" data-i18n="login_user_label">Username</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
               <i class="fa-solid fa-user"></i>
@@ -34,7 +53,7 @@
           </div>
         </div>
         <div>
-          <label class="block text-slate-300 font-medium mb-1">Mật khẩu</label>
+          <label class="block text-slate-300 font-medium mb-1" data-i18n="login_pass_label">Password</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
               <i class="fa-solid fa-lock"></i>
@@ -43,14 +62,14 @@
           </div>
         </div>
 
-        <button type="submit" id="btn-login-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 transition duration-200 mt-2">
-          Đăng Nhập
+        <button type="submit" id="btn-login-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 transition duration-200 mt-2" data-i18n="login_btn">
+          Sign In
         </button>
       </form>
     </div>
   </div>
 
-  <!-- MÀN HÌNH DASHBOARD (Ẩn tuyệt đối cho đến khi đăng nhập thành công) -->
+  <!-- MÀN HÌNH DASHBOARD -->
   <div id="app-container" style="display: none;" class="h-full flex-col">
     <!-- Header -->
     <header class="bg-slate-800/80 border-b border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
@@ -61,22 +80,34 @@
           </div>
           <div>
             <div class="flex items-center space-x-2">
-              <h1 class="text-base font-semibold leading-none">VPS WordPress Control</h1>
-              <span id="panel-version-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v1.0.14</span>
+              <h1 class="text-base font-semibold leading-none" data-i18n="app_name">VPS WordPress Control</h1>
+              <span id="panel-version-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v1.0.15</span>
             </div>
-            <span class="text-xs text-slate-400">Lightweight Dedicated Panel</span>
+            <span class="text-xs text-slate-400" data-i18n="app_subtitle">Lightweight Dedicated Panel</span>
           </div>
         </div>
         <div class="flex items-center space-x-2.5">
+          <!-- Language Selector on Header -->
+          <div class="relative" id="lang-dropdown-wrapper">
+            <button type="button" onclick="toggleLangDropdown(event)" id="current-lang-btn" class="px-2.5 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md border border-slate-600 flex items-center space-x-1.5 transition">
+              <span id="current-lang-flag">🇺🇸</span>
+              <span id="current-lang-name">English</span>
+              <i class="fa-solid fa-chevron-down text-[9px] opacity-70 ml-0.5"></i>
+            </button>
+            <div id="lang-dropdown-menu" class="hidden absolute right-0 mt-1.5 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 divide-y divide-slate-700/50 max-h-72 overflow-y-auto custom-scrollbar">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
           <button onclick="scanVPS()" id="btn-scan-vps" class="px-3 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md border border-slate-600 transition flex items-center space-x-1.5">
             <i class="fa-solid fa-arrows-rotate"></i>
-            <span>Quét lại VPS</span>
+            <span data-i18n="btn_scan_vps">Rescan VPS</span>
           </button>
           <button onclick="openCreateModal()" class="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-md shadow transition flex items-center space-x-1.5">
             <i class="fa-solid fa-plus"></i>
-            <span>Thêm Website</span>
+            <span data-i18n="btn_add_site">Add Website</span>
           </button>
-          <button onclick="handleLogout()" title="Đăng xuất" class="p-1.5 text-slate-400 hover:text-red-400 transition ml-2">
+          <button onclick="handleLogout()" data-i18n-title="logout" title="Logout" class="p-1.5 text-slate-400 hover:text-red-400 transition ml-1">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
@@ -94,7 +125,7 @@
               <i class="fa-solid fa-globe"></i>
             </div>
             <div>
-              <p class="text-xs text-slate-400 font-medium">Tổng số Website</p>
+              <p class="text-xs text-slate-400 font-medium" data-i18n="stat_total_sites">Total Websites</p>
               <p class="text-2xl font-bold" id="stat-total-sites">0</p>
             </div>
           </div>
@@ -105,13 +136,13 @@
               <i class="fa-solid fa-puzzle-piece"></i>
             </div>
             <div>
-              <p class="text-xs text-slate-400 font-medium">Cần cập nhật Plugin</p>
+              <p class="text-xs text-slate-400 font-medium" data-i18n="stat_plugins_need_update">Plugins Need Update</p>
               <p class="text-2xl font-bold" id="stat-total-updates">0</p>
             </div>
           </div>
           <button onclick="bulkUpdateAllSites()" id="btn-update-all-top" class="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-medium rounded-lg border border-amber-500/30 transition flex items-center space-x-1">
             <i class="fa-solid fa-cloud-arrow-up"></i>
-            <span>Cập nhật tất cả</span>
+            <span data-i18n="stat_btn_update_all">Update All</span>
           </button>
         </div>
         <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
@@ -120,13 +151,13 @@
               <i class="fa-solid fa-shield-halved"></i>
             </div>
             <div>
-              <p class="text-xs text-slate-400 font-medium">Trạng thái bảo mật</p>
-              <p class="text-2xl font-bold text-emerald-400" id="stat-security-status">An toàn</p>
+              <p class="text-xs text-slate-400 font-medium" data-i18n="stat_security_status">Security Status</p>
+              <p class="text-2xl font-bold text-emerald-400" id="stat-security-status" data-i18n="stat_security_safe">Secure</p>
             </div>
           </div>
           <button onclick="scanAllSitesMalware()" id="btn-scan-all-top" class="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-medium rounded-lg border border-emerald-500/30 transition flex items-center space-x-1">
             <i class="fa-solid fa-shield-virus"></i>
-            <span>Quét toàn VPS</span>
+            <span data-i18n="stat_btn_scan_all">Scan All VPS</span>
           </button>
         </div>
       </div>
@@ -135,31 +166,31 @@
       <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm relative">
         <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between">
           <div class="flex items-center space-x-3">
-            <h2 class="text-sm font-semibold text-slate-200">Danh sách Website trên VPS</h2>
-            <span class="text-xs text-slate-400" id="table-subtitle">Đang tải...</span>
+            <h2 class="text-sm font-semibold text-slate-200" data-i18n="table_title">WordPress Websites on VPS</h2>
+            <span class="text-xs text-slate-400" id="table-subtitle" data-i18n="table_loading">Loading...</span>
           </div>
           <!-- Bulk Action Bar -->
           <div id="bulk-action-bar" class="hidden flex items-center space-x-2 bg-indigo-950/80 border border-indigo-500/30 px-3 py-1.5 rounded-lg flex-wrap gap-y-1">
-            <span class="text-xs text-indigo-300 font-medium mr-1" id="selected-count-label">Đã chọn 0 website</span>
+            <span class="text-xs text-indigo-300 font-medium mr-1" id="selected-count-label">0 websites selected</span>
             <button onclick="bulkUpdateSelected()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-solid fa-puzzle-piece"></i>
-              <span>Cập nhật Plugins</span>
+              <span data-i18n="bulk_update_plugins">Update Plugins</span>
             </button>
             <button onclick="bulkUpdateThemesSelected()" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-solid fa-paintbrush"></i>
-              <span>Cập nhật Themes</span>
+              <span data-i18n="bulk_update_themes">Update Themes</span>
             </button>
             <button onclick="bulkCoreUpdateSelected()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-brands fa-wordpress"></i>
-              <span>Cập nhật WP Core</span>
+              <span data-i18n="bulk_update_core">Update WP Core</span>
             </button>
             <button onclick="bulkOpenPHPModal()" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-brands fa-php"></i>
-              <span>Đổi PHP</span>
+              <span data-i18n="bulk_change_php">Change PHP</span>
             </button>
             <button onclick="bulkIssueSSLSelected()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-medium flex items-center space-x-1">
               <i class="fa-solid fa-lock"></i>
-              <span>Cài SSL</span>
+              <span data-i18n="bulk_install_ssl">Install SSL</span>
             </button>
           </div>
         </div>
@@ -171,13 +202,13 @@
                 <th class="px-4 py-3 w-8 text-center">
                   <input type="checkbox" id="check-all" onchange="toggleSelectAll(this)" class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
                 </th>
-                <th class="px-4 py-3">Tên miền</th>
-                <th class="px-4 py-3">Phiên bản</th>
-                <th class="px-4 py-3">Database</th>
-                <th class="px-4 py-3">SSL</th>
-                <th class="px-4 py-3">Plugins</th>
-                <th class="px-4 py-3">Themes</th>
-                <th class="px-4 py-3 text-right">Thao tác</th>
+                <th class="px-4 py-3" data-i18n="col_domain">Domain</th>
+                <th class="px-4 py-3" data-i18n="col_version">WP / PHP</th>
+                <th class="px-4 py-3" data-i18n="col_database">Database</th>
+                <th class="px-4 py-3" data-i18n="col_ssl">SSL</th>
+                <th class="px-4 py-3" data-i18n="col_plugins">Plugins</th>
+                <th class="px-4 py-3" data-i18n="col_themes">Themes</th>
+                <th class="px-4 py-3 text-right" data-i18n="col_actions">Actions</th>
               </tr>
             </thead>
             <tbody id="sites-table-body" class="divide-y divide-slate-700/50">
@@ -196,22 +227,22 @@
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
           <i class="fa-brands fa-php text-indigo-400"></i>
-          <span>Chuyển đổi phiên bản PHP</span>
+          <span data-i18n="php_modal_title">Switch PHP Version</span>
         </h3>
         <button onclick="closePHPModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="p-5 space-y-3.5 text-xs">
-        <p class="text-slate-300">Website: <strong id="php-modal-domain" class="text-white">example.com</strong></p>
+        <p class="text-slate-300"><span data-i18n="col_domain">Domain</span>: <strong id="php-modal-domain" class="text-white">example.com</strong></p>
         <div>
-          <label class="block text-slate-300 font-medium mb-1">Chọn phiên bản PHP đích</label>
+          <label class="block text-slate-300 font-medium mb-1" data-i18n="php_modal_target">Select target PHP version</label>
           <select id="select-php-version" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
             <!-- Dynamically loaded -->
           </select>
-          <p class="text-[11px] text-slate-400 mt-1">Hệ thống sẽ tự động cập nhật socket FastCGI trong Nginx và reload dịch vụ ngay lập tức.</p>
+          <p class="text-[11px] text-slate-400 mt-1" data-i18n="php_modal_desc">The system will automatically update the Nginx FastCGI socket and reload the service immediately.</p>
         </div>
         <div class="pt-2 flex justify-end space-x-2">
-          <button type="button" onclick="closePHPModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md">Hủy</button>
-          <button type="button" onclick="submitChangePHP()" id="btn-submit-php" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">Lưu thay đổi</button>
+          <button type="button" onclick="closePHPModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md" data-i18n="btn_cancel">Cancel</button>
+          <button type="button" onclick="submitChangePHP()" id="btn-submit-php" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium" data-i18n="btn_save_changes">Save Changes</button>
         </div>
       </div>
     </div>
@@ -221,23 +252,23 @@
   <div id="modal-create" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
-        <h3 class="text-sm font-semibold text-white">Thêm Website WordPress Mới</h3>
+        <h3 class="text-sm font-semibold text-white" data-i18n="create_modal_title">Add New WordPress Website</h3>
         <button onclick="closeCreateModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="form-create-site" onsubmit="handleCreateSite(event)" class="p-5 space-y-3.5 text-xs">
         <div>
-          <label class="block text-slate-300 font-medium mb-1">Tên miền (Domain)</label>
+          <label class="block text-slate-300 font-medium mb-1" data-i18n="create_domain_label">Domain Name</label>
           <input type="text" id="create-domain" required placeholder="example.com" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
         </div>
         <div>
-          <label class="block text-slate-300 font-medium mb-1">Tiêu đề Website</label>
+          <label class="block text-slate-300 font-medium mb-1" data-i18n="create_title_label">Website Title</label>
           <input type="text" id="create-title" placeholder="My WordPress Site" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-300 font-medium mb-1">Phiên bản WordPress</label>
+            <label class="block text-slate-300 font-medium mb-1" data-i18n="create_wp_label">WordPress Version</label>
             <select id="create-wp-ver" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
-              <option value="latest" selected>Mới nhất (Latest)</option>
+              <option value="latest" selected>Latest</option>
               <option value="6.7.1">WordPress 6.7.1</option>
               <option value="6.6.2">WordPress 6.6.2</option>
               <option value="6.5.5">WordPress 6.5.5</option>
@@ -246,7 +277,7 @@
             </select>
           </div>
           <div>
-            <label class="block text-slate-300 font-medium mb-1">Phiên bản PHP</label>
+            <label class="block text-slate-300 font-medium mb-1" data-i18n="create_php_label">PHP Version</label>
             <select id="create-php" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
               <option value="8.2" selected>PHP 8.2</option>
               <option value="8.3">PHP 8.3</option>
@@ -257,21 +288,21 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-300 font-medium mb-1">Admin Username</label>
+            <label class="block text-slate-300 font-medium mb-1" data-i18n="create_user_label">Admin Username</label>
             <input type="text" id="create-user" value="admin" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-slate-300 font-medium mb-1">Admin Password</label>
-            <input type="password" id="create-pass" placeholder="Tự sinh nếu trống" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-slate-300 font-medium mb-1" data-i18n="create_pass_label">Admin Password</label>
+            <input type="password" id="create-pass" data-i18n-placeholder="create_pass_placeholder" placeholder="Auto-generated if empty" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:border-indigo-500">
           </div>
         </div>
         <div class="flex items-center space-x-2 pt-1">
           <input type="checkbox" id="create-ssl" class="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded">
-          <label for="create-ssl" class="text-slate-300">Tự động cấp chứng chỉ Let's Encrypt SSL</label>
+          <label for="create-ssl" class="text-slate-300" data-i18n="create_ssl_label">Automatically issue Let's Encrypt SSL certificate</label>
         </div>
         <div class="pt-3 flex justify-end space-x-2">
-          <button type="button" onclick="closeCreateModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md">Hủy</button>
-          <button type="submit" id="btn-submit-create" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">Bắt đầu tạo</button>
+          <button type="button" onclick="closeCreateModal()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md" data-i18n="btn_cancel">Cancel</button>
+          <button type="submit" id="btn-submit-create" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium" data-i18n="create_btn_submit">Start Creation</button>
         </div>
       </form>
     </div>
@@ -283,13 +314,13 @@
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
           <i class="fa-solid fa-shield-virus text-indigo-400"></i>
-          <span id="scan-modal-title">Kết quả quét mã độc</span>
+          <span id="scan-modal-title" data-i18n="scan_modal_title">Malware Scan Results</span>
         </h3>
         <button onclick="closeScanModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="p-5 max-h-[60vh] overflow-y-auto" id="scan-modal-content"></div>
       <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
-        <button onclick="closeScanModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium">Đóng</button>
+        <button onclick="closeScanModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium" data-i18n="btn_close">Close</button>
       </div>
     </div>
   </div>
@@ -298,12 +329,12 @@
   <div id="drawer-plugins" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-800 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
     <div class="p-4 border-b border-slate-700 flex justify-between items-center">
       <div>
-        <h3 class="text-sm font-semibold text-white" id="drawer-title">Quản lý Plugins</h3>
+        <h3 class="text-sm font-semibold text-white" id="drawer-title" data-i18n="col_plugins">Plugins</h3>
         <p class="text-[11px] text-slate-400 mt-0.5" id="drawer-site-domain"></p>
       </div>
       <div class="flex items-center space-x-2">
-        <button onclick="updateAllPluginsDrawer()" id="btn-update-all-drawer" title="Cập nhật tất cả plugin" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
-          <i class="fa-solid fa-cloud-arrow-up"></i><span>Update All</span>
+        <button onclick="updateAllPluginsDrawer()" id="btn-update-all-drawer" data-i18n-title="btn_update_all_drawer" title="Update All" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
+          <i class="fa-solid fa-cloud-arrow-up"></i><span data-i18n="btn_update_all_drawer">Update All</span>
         </button>
         <button onclick="closePluginDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -315,12 +346,12 @@
   <div id="drawer-themes" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-800 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
     <div class="p-4 border-b border-slate-700 flex justify-between items-center">
       <div>
-        <h3 class="text-sm font-semibold text-white" id="drawer-themes-title">Quản lý Themes</h3>
+        <h3 class="text-sm font-semibold text-white" id="drawer-themes-title" data-i18n="col_themes">Themes</h3>
         <p class="text-[11px] text-slate-400 mt-0.5" id="drawer-themes-site-domain"></p>
       </div>
       <div class="flex items-center space-x-2">
-        <button onclick="updateAllThemesDrawer()" id="btn-update-all-themes-drawer" title="Cập nhật tất cả theme" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
-          <i class="fa-solid fa-cloud-arrow-up"></i><span>Update All</span>
+        <button onclick="updateAllThemesDrawer()" id="btn-update-all-themes-drawer" data-i18n-title="btn_update_all_drawer" title="Update All" class="px-2.5 py-1 text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/30 flex items-center space-x-1">
+          <i class="fa-solid fa-cloud-arrow-up"></i><span data-i18n="btn_update_all_drawer">Update All</span>
         </button>
         <button onclick="closeThemeDrawer()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -334,23 +365,23 @@
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
           <i class="fa-solid fa-box-archive text-indigo-400"></i>
-          <span id="backup-modal-title">Sao lưu Website</span>
+          <span id="backup-modal-title" data-i18n="backup_modal_title">Website Backups</span>
         </h3>
         <button onclick="closeBackupModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="p-5 space-y-4">
         <div class="flex items-center justify-between">
-          <p class="text-xs text-slate-300">Website: <strong id="backup-modal-domain" class="text-white"></strong></p>
+          <p class="text-xs text-slate-300"><span data-i18n="col_domain">Domain</span>: <strong id="backup-modal-domain" class="text-white"></strong></p>
           <button onclick="createBackup()" id="btn-create-backup" class="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium flex items-center space-x-1.5">
-            <i class="fa-solid fa-plus"></i><span>Tạo bản sao lưu</span>
+            <i class="fa-solid fa-plus"></i><span data-i18n="backup_btn_create">Create Backup</span>
           </button>
         </div>
         <div id="backup-list-container" class="space-y-2 max-h-64 overflow-y-auto">
-          <p class="text-xs text-slate-500 text-center py-4">Đang tải...</p>
+          <p class="text-xs text-slate-500 text-center py-4" data-i18n="table_loading">Loading...</p>
         </div>
       </div>
       <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
-        <button onclick="closeBackupModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium">Đóng</button>
+        <button onclick="closeBackupModal()" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-xs font-medium" data-i18n="btn_close">Close</button>
       </div>
     </div>
   </div>
@@ -361,7 +392,7 @@
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
         <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
           <i class="fa-solid fa-spinner fa-spin text-indigo-400" id="job-modal-icon"></i>
-          <span id="job-modal-title">Đang xử lý tác vụ...</span>
+          <span id="job-modal-title" data-i18n="job_modal_preparing">Preparing task...</span>
         </h3>
       </div>
       <div class="p-5 space-y-4">
@@ -369,10 +400,10 @@
           <div id="job-progress-bar" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
         <p class="text-xs text-slate-300" id="job-progress-label">0%</p>
-        <p class="text-xs text-slate-400 font-mono bg-slate-900/60 rounded p-3 min-h-[48px] leading-relaxed" id="job-progress-msg">Đang chuẩn bị...</p>
+        <p class="text-xs text-slate-400 font-mono bg-slate-900/60 rounded p-3 min-h-[48px] leading-relaxed" id="job-progress-msg" data-i18n="job_modal_preparing">Preparing task...</p>
       </div>
       <div class="px-5 py-3 border-t border-slate-700 flex justify-end">
-        <button id="btn-close-job" onclick="closeJobModal()" class="hidden px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-medium">Đóng</button>
+        <button id="btn-close-job" onclick="closeJobModal()" class="hidden px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-medium" data-i18n="btn_close">Close</button>
       </div>
     </div>
   </div>
@@ -380,10 +411,146 @@
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs flex items-center space-x-2 transform translate-y-20 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
-    <span id="toast-msg">Thông báo</span>
+    <span id="toast-msg">Notification</span>
   </div>
 
   <script>
+    // ==================== MULTI-LANGUAGE I18N SYSTEM ====================
+    const I18N = {"en": {"name": "English", "flag": "🇺🇸", "app_name": "VPS WordPress Control", "app_subtitle": "Lightweight Dedicated Panel", "login_title": "VPS WordPress Control", "login_subtitle": "Sign in to manage your server", "login_user_label": "Username", "login_pass_label": "Password", "login_btn": "Sign In", "login_authenticating": "Authenticating...", "login_success": "Signed in successfully!", "login_invalid": "Invalid username or password", "login_server_error": "Server error during sign in", "logout": "Logout", "logged_out": "Logged out", "btn_scan_vps": "Rescan VPS", "btn_scanning": "Scanning...", "btn_add_site": "Add Website", "stat_total_sites": "Total Websites", "stat_plugins_need_update": "Plugins Need Update", "stat_btn_update_all": "Update All", "stat_security_status": "Security Status", "stat_security_safe": "Secure", "stat_security_warning": "Warning", "stat_btn_scan_all": "Scan All VPS", "table_title": "WordPress Websites on VPS", "table_loading": "Loading...", "table_found_sites": "Found {count} websites", "no_sites_found": "No websites found. Click 'Rescan VPS' or '+ Add Website' to begin.", "col_domain": "Domain", "col_version": "WP / PHP", "col_database": "Database", "col_ssl": "SSL", "col_plugins": "Plugins", "col_themes": "Themes", "col_actions": "Actions", "btn_install_ssl": "Install SSL", "tooltip_change_php": "Click to switch PHP version", "tooltip_magic_login": "1-Click login to wp-admin", "tooltip_scan_malware": "3-layer malware scan", "tooltip_core_update": "Update WordPress Core", "tooltip_backup": "Backup & Restore", "updates_badge": "{count} updates", "update_badge": "update", "ssl_active": "HTTPS", "bulk_selected": "{count} websites selected", "bulk_update_plugins": "Update Plugins", "bulk_update_themes": "Update Themes", "bulk_update_core": "Update WP Core", "bulk_change_php": "Change PHP", "bulk_install_ssl": "Install SSL", "drawer_plugins_title": "Plugins ({count})", "drawer_plugins_empty": "No plugins found.", "drawer_themes_title": "Themes ({count})", "drawer_themes_empty": "No themes found or not scanned yet. Click 'Rescan VPS' to update.", "plugin_active": "Active", "plugin_inactive": "Inactive", "theme_in_use": "In Use", "theme_latest": "Latest", "btn_turn_on": "Turn On", "btn_turn_off": "Turn Off", "btn_update": "Update", "btn_update_all_drawer": "Update All", "php_modal_title": "Switch PHP Version", "php_modal_target": "Select target PHP version", "php_modal_desc": "The system will automatically update the Nginx FastCGI socket and reload the service immediately.", "btn_cancel": "Cancel", "btn_save_changes": "Save Changes", "create_modal_title": "Add New WordPress Website", "create_domain_label": "Domain Name", "create_title_label": "Website Title", "create_wp_label": "WordPress Version", "create_php_label": "PHP Version", "create_user_label": "Admin Username", "create_pass_label": "Admin Password", "create_pass_placeholder": "Auto-generated if empty", "create_ssl_label": "Automatically issue Let's Encrypt SSL certificate", "create_btn_submit": "Start Creation", "create_btn_submitting": "Creating...", "backup_modal_title": "Website Backups", "backup_btn_create": "Create Backup", "backup_creating": "Backing up...", "backup_empty": "No backups found.", "backup_btn_restore": "Restore", "backup_btn_delete": "Delete", "backup_confirm_restore": "Restore from '{filename}'?\\nThis will overwrite current website files and database!", "backup_confirm_delete": "Delete backup '{filename}'?", "scan_modal_title": "Malware Scan Results", "scan_clean_title": "Website is completely clean!", "scan_clean_desc": "No PHP files in uploads directory, no suspicious webshells detected.", "btn_close": "Close", "job_modal_preparing": "Preparing task...", "job_modal_completed": "Completed!", "job_modal_failed": "Failed!", "toast_scan_vps_success": "Synced {count} websites!", "toast_magic_login_error": "Unable to retrieve login URL", "toast_backup_created": "Backup created: {name}", "toast_backup_restored": "Website restored successfully!", "toast_backup_deleted": "Backup deleted", "language": "Language"}, "vi": {"name": "Tiếng Việt", "flag": "🇻🇳", "app_name": "VPS WordPress Control", "app_subtitle": "Bảng điều khiển chuyên dụng gọn nhẹ", "login_title": "VPS WordPress Control", "login_subtitle": "Đăng nhập để quản trị máy chủ", "login_user_label": "Tài khoản", "login_pass_label": "Mật khẩu", "login_btn": "Đăng Nhập", "login_authenticating": "Đang xác thực...", "login_success": "Đăng nhập thành công!", "login_invalid": "Sai tài khoản hoặc mật khẩu", "login_server_error": "Lỗi máy chủ khi đăng nhập", "logout": "Đăng xuất", "logged_out": "Đã đăng xuất", "btn_scan_vps": "Quét lại VPS", "btn_scanning": "Đang quét...", "btn_add_site": "Thêm Website", "stat_total_sites": "Tổng số Website", "stat_plugins_need_update": "Cần cập nhật Plugin", "stat_btn_update_all": "Cập nhật tất cả", "stat_security_status": "Trạng thái bảo mật", "stat_security_safe": "An toàn", "stat_security_warning": "Cảnh báo", "stat_btn_scan_all": "Quét toàn VPS", "table_title": "Danh sách Website trên VPS", "table_loading": "Đang tải...", "table_found_sites": "Tìm thấy {count} website", "no_sites_found": "Chưa có website nào. Nhấn 'Quét lại VPS' hoặc '+ Thêm Website' để bắt đầu.", "col_domain": "Tên miền", "col_version": "Phiên bản", "col_database": "Database", "col_ssl": "SSL", "col_plugins": "Plugins", "col_themes": "Themes", "col_actions": "Thao tác", "btn_install_ssl": "Cài SSL", "tooltip_change_php": "Click để đổi phiên bản PHP", "tooltip_magic_login": "Đăng nhập 1-click vào wp-admin", "tooltip_scan_malware": "Quét mã độc 3 lớp", "tooltip_core_update": "Cập nhật WordPress Core", "tooltip_backup": "Sao lưu & Khôi phục", "updates_badge": "{count} update", "update_badge": "update", "ssl_active": "HTTPS", "bulk_selected": "Đã chọn {count} website", "bulk_update_plugins": "Cập nhật Plugins", "bulk_update_themes": "Cập nhật Themes", "bulk_update_core": "Cập nhật WP Core", "bulk_change_php": "Đổi PHP", "bulk_install_ssl": "Cài SSL", "drawer_plugins_title": "Plugins ({count})", "drawer_plugins_empty": "Không có plugin nào.", "drawer_themes_title": "Themes ({count})", "drawer_themes_empty": "Không có theme nào hoặc chưa quét. Nhấn 'Quét lại VPS' để cập nhật.", "plugin_active": "Đang bật", "plugin_inactive": "Đã tắt", "theme_in_use": "Đang dùng", "theme_latest": "Bản mới nhất", "btn_turn_on": "Bật", "btn_turn_off": "Tắt", "btn_update": "Update", "btn_update_all_drawer": "Update All", "php_modal_title": "Chuyển đổi phiên bản PHP", "php_modal_target": "Chọn phiên bản PHP đích", "php_modal_desc": "Hệ thống sẽ tự động cập nhật socket FastCGI trong Nginx và reload dịch vụ ngay lập tức.", "btn_cancel": "Hủy", "btn_save_changes": "Lưu thay đổi", "create_modal_title": "Thêm Website WordPress Mới", "create_domain_label": "Tên miền (Domain)", "create_title_label": "Tiêu đề Website", "create_wp_label": "Phiên bản WordPress", "create_php_label": "Phiên bản PHP", "create_user_label": "Admin Username", "create_pass_label": "Admin Password", "create_pass_placeholder": "Tự sinh nếu trống", "create_ssl_label": "Tự động cấp chứng chỉ Let's Encrypt SSL", "create_btn_submit": "Bắt đầu tạo", "create_btn_submitting": "Đang khởi tạo...", "backup_modal_title": "Sao lưu Website", "backup_btn_create": "Tạo bản sao lưu", "backup_creating": "Đang sao lưu...", "backup_empty": "Chưa có bản sao lưu nào.", "backup_btn_restore": "Restore", "backup_btn_delete": "Xóa", "backup_confirm_restore": "Khôi phục từ bản: '{filename}'?\\nThao tác này sẽ ghi đè dữ liệu hiện tại!", "backup_confirm_delete": "Xóa bản sao lưu '{filename}'?", "scan_modal_title": "Kết quả quét mã độc", "scan_clean_title": "Website hoàn toàn sạch sẽ!", "scan_clean_desc": "Không phát hiện file PHP trong thư mục uploads, không có webshell.", "btn_close": "Đóng", "job_modal_preparing": "Đang chuẩn bị...", "job_modal_completed": "Hoàn tất!", "job_modal_failed": "Thất bại!", "toast_scan_vps_success": "Đã đồng bộ {count} website!", "toast_magic_login_error": "Không thể lấy link đăng nhập", "toast_backup_created": "Đã tạo bản sao lưu: {name}", "toast_backup_restored": "Khôi phục website thành công!", "toast_backup_deleted": "Đã xóa bản sao lưu", "language": "Ngôn ngữ"}, "zh": {"name": "简体中文", "flag": "🇨🇳", "app_name": "VPS WordPress Control", "app_subtitle": "轻量级专用管理面板", "login_title": "VPS WordPress Control", "login_subtitle": "登录以管理您的服务器", "login_user_label": "用户名", "login_pass_label": "密码", "login_btn": "登录", "login_authenticating": "正在验证...", "login_success": "登录成功！", "login_invalid": "用户名或密码错误", "login_server_error": "登录时服务器错误", "logout": "退出登录", "logged_out": "已退出登录", "btn_scan_vps": "重新扫描 VPS", "btn_scanning": "正在扫描...", "btn_add_site": "添加网站", "stat_total_sites": "网站总数", "stat_plugins_need_update": "待更新插件", "stat_btn_update_all": "全部更新", "stat_security_status": "安全状态", "stat_security_safe": "安全", "stat_security_warning": "警告", "stat_btn_scan_all": "扫描全部 VPS", "table_title": "VPS 上的 WordPress 网站", "table_loading": "正在加载...", "table_found_sites": "找到 {count} 个网站", "no_sites_found": "未找到网站。点击“重新扫描 VPS”或“+ 添加网站”开始。", "col_domain": "域名", "col_version": "WP / PHP 版本", "col_database": "数据库", "col_ssl": "SSL 证书", "col_plugins": "插件", "col_themes": "主题", "col_actions": "操作", "btn_install_ssl": "安装 SSL", "tooltip_change_php": "点击切换 PHP 版本", "tooltip_magic_login": "一键登录 wp-admin", "tooltip_scan_malware": "三层恶意软件扫描", "tooltip_core_update": "更新 WordPress 核心", "tooltip_backup": "备份与恢复", "updates_badge": "{count} 个更新", "update_badge": "更新", "ssl_active": "HTTPS", "bulk_selected": "已选择 {count} 个网站", "bulk_update_plugins": "更新插件", "bulk_update_themes": "更新主题", "bulk_update_core": "更新 WP 核心", "bulk_change_php": "更改 PHP", "bulk_install_ssl": "安装 SSL", "drawer_plugins_title": "插件 ({count})", "drawer_plugins_empty": "未找到插件。", "drawer_themes_title": "主题 ({count})", "drawer_themes_empty": "未找到主题或尚未扫描。请点击“重新扫描 VPS”。", "plugin_active": "已启用", "plugin_inactive": "已停用", "theme_in_use": "使用中", "theme_latest": "最新版本", "btn_turn_on": "启用", "btn_turn_off": "停用", "btn_update": "更新", "btn_update_all_drawer": "全部更新", "php_modal_title": "切换 PHP 版本", "php_modal_target": "选择目标 PHP 版本", "php_modal_desc": "系统将自动更新 Nginx FastCGI 套接字并立即重新加载服务。", "btn_cancel": "取消", "btn_save_changes": "保存更改", "create_modal_title": "添加新的 WordPress 网站", "create_domain_label": "域名 (Domain)", "create_title_label": "网站标题", "create_wp_label": "WordPress 版本", "create_php_label": "PHP 版本", "create_user_label": "管理员用户名", "create_pass_label": "管理员密码", "create_pass_placeholder": "留空自动生成", "create_ssl_label": "自动签发 Let's Encrypt SSL 证书", "create_btn_submit": "开始创建", "create_btn_submitting": "正在创建...", "backup_modal_title": "网站备份", "backup_btn_create": "创建备份", "backup_creating": "正在备份...", "backup_empty": "暂无备份文件。", "backup_btn_restore": "恢复", "backup_btn_delete": "删除", "backup_confirm_restore": "确认从“{filename}”恢复？\\n此操作将覆盖现有的文件和数据库！", "backup_confirm_delete": "确认删除备份“{filename}”？", "scan_modal_title": "恶意软件扫描结果", "scan_clean_title": "网站非常安全干净！", "scan_clean_desc": "未在 uploads 目录发现 PHP 文件，未检测到可疑 WebShell。", "btn_close": "关闭", "job_modal_preparing": "正在准备任务...", "job_modal_completed": "已完成！", "job_modal_failed": "执行失败！", "toast_scan_vps_success": "已成功同步 {count} 个网站！", "toast_magic_login_error": "无法获取登录链接", "toast_backup_created": "备份创建成功：{name}", "toast_backup_restored": "网站恢复成功！", "toast_backup_deleted": "备份已删除", "language": "语言"}, "ja": {"name": "日本語", "flag": "🇯🇵", "app_name": "VPS WordPress Control", "app_subtitle": "軽量専用管理パネル", "login_title": "VPS WordPress Control", "login_subtitle": "サーバーを管理するにはログインしてください", "login_user_label": "ユーザー名", "login_pass_label": "パスワード", "login_btn": "ログイン", "login_authenticating": "認証中...", "login_success": "ログインしました！", "login_invalid": "ユーザー名またはパスワードが無効です", "login_server_error": "ログイン中にサーバーエラーが発生しました", "logout": "ログアウト", "logged_out": "ログアウトしました", "btn_scan_vps": "VPS再スキャン", "btn_scanning": "スキャン中...", "btn_add_site": "サイト追加", "stat_total_sites": "総サイト数", "stat_plugins_need_update": "更新が必要なプラグイン", "stat_btn_update_all": "すべて更新", "stat_security_status": "セキュリティ状態", "stat_security_safe": "安全", "stat_security_warning": "警告", "stat_btn_scan_all": "全VPSスキャン", "table_title": "VPS上のWordPressサイト一覧", "table_loading": "読み込み中...", "table_found_sites": "{count} 件のサイトが見つかりました", "no_sites_found": "サイトが見つかりません。「VPS再スキャン」または「+ サイト追加」をクリックしてください。", "col_domain": "ドメイン", "col_version": "WP / PHP", "col_database": "データベース", "col_ssl": "SSL", "col_plugins": "プラグイン", "col_themes": "テーマ", "col_actions": "操作", "btn_install_ssl": "SSL導入", "tooltip_change_php": "クリックしてPHPバージョンを変更", "tooltip_magic_login": "wp-adminへワンクリックログイン", "tooltip_scan_malware": "3層マルウェアスキャン", "tooltip_core_update": "WordPressコア更新", "tooltip_backup": "バックアップ＆復元", "updates_badge": "{count} 件更新", "update_badge": "更新", "ssl_active": "HTTPS", "bulk_selected": "{count} 件選択中", "bulk_update_plugins": "プラグイン更新", "bulk_update_themes": "テーマ更新", "bulk_update_core": "WPコア更新", "bulk_change_php": "PHP変更", "bulk_install_ssl": "SSL導入", "drawer_plugins_title": "プラグイン ({count})", "drawer_plugins_empty": "プラグインが見つかりません。", "drawer_themes_title": "テーマ ({count})", "drawer_themes_empty": "テーマが見つからないか未スキャンです。「VPS再スキャン」をクリックしてください。", "plugin_active": "有効", "plugin_inactive": "無効", "theme_in_use": "使用中", "theme_latest": "最新版", "btn_turn_on": "有効化", "btn_turn_off": "無効化", "btn_update": "更新", "btn_update_all_drawer": "すべて更新", "php_modal_title": "PHPバージョンの切り替え", "php_modal_target": "対象のPHPバージョンを選択", "php_modal_desc": "システムがNginx FastCGIソケットを自動更新し、即座にサービスをリロードします。", "btn_cancel": "キャンセル", "btn_save_changes": "変更を保存", "create_modal_title": "新規WordPressサイトの作成", "create_domain_label": "ドメイン名", "create_title_label": "サイトタイトル", "create_wp_label": "WordPressバージョン", "create_php_label": "PHPバージョン", "create_user_label": "管理者ユーザー名", "create_pass_label": "管理者パスワード", "create_pass_placeholder": "空欄で自動生成", "create_ssl_label": "Let's Encrypt SSL証明書を自動発行", "create_btn_submit": "作成開始", "create_btn_submitting": "作成中...", "backup_modal_title": "サイトバックアップ", "backup_btn_create": "バックアップ作成", "backup_creating": "バックアップ中...", "backup_empty": "バックアップはありません。", "backup_btn_restore": "復元", "backup_btn_delete": "削除", "backup_confirm_restore": "「{filename}」から復元しますか？\\n現在のサイトファイルとデータベースが上書きされます！", "backup_confirm_delete": "バックアップ「{filename}」を削除しますか？", "scan_modal_title": "マルウェアスキャン結果", "scan_clean_title": "サイトは完全にクリーンです！", "scan_clean_desc": "uploadsディレクトリ内にPHPファイルはなく、不審なWebShellも検出されませんでした。", "btn_close": "閉じる", "job_modal_preparing": "準備中...", "job_modal_completed": "完了しました！", "job_modal_failed": "失敗しました！", "toast_scan_vps_success": "{count} 件のサイトを同期しました！", "toast_magic_login_error": "ログインURLを取得できませんでした", "toast_backup_created": "バックアップ作成完了：{name}", "toast_backup_restored": "サイトが正常に復元されました！", "toast_backup_deleted": "バックアップが削除されました", "language": "言語"}, "ko": {"name": "한국어", "flag": "🇰🇷", "app_name": "VPS WordPress Control", "app_subtitle": "가볍고 강력한 전용 관리 패널", "login_title": "VPS WordPress Control", "login_subtitle": "서버 관리를 위해 로그인하세요", "login_user_label": "사용자 이름", "login_pass_label": "비밀번호", "login_btn": "로그인", "login_authenticating": "인증 중...", "login_success": "로그인되었습니다!", "login_invalid": "사용자 이름 또는 비밀번호가 잘못되었습니다", "login_server_error": "로그인 중 서버 오류 발생", "logout": "로그아웃", "logged_out": "로그아웃되었습니다", "btn_scan_vps": "VPS 재검색", "btn_scanning": "검색 중...", "btn_add_site": "웹사이트 추가", "stat_total_sites": "총 웹사이트", "stat_plugins_need_update": "업데이트 필요 플러그인", "stat_btn_update_all": "모두 업데이트", "stat_security_status": "보안 상태", "stat_security_safe": "안전", "stat_security_warning": "경고", "stat_btn_scan_all": "전체 VPS 스캔", "table_title": "VPS의 WordPress 웹사이트 목록", "table_loading": "로딩 중...", "table_found_sites": "{count}개 사이트 발견", "no_sites_found": "웹사이트가 없습니다. 'VPS 재검색' 또는 '+ 웹사이트 추가'를 클릭하세요.", "col_domain": "도메인", "col_version": "WP / PHP", "col_database": "데이터베이스", "col_ssl": "SSL", "col_plugins": "플러그인", "col_themes": "테마", "col_actions": "작업", "btn_install_ssl": "SSL 설치", "tooltip_change_php": "클릭하여 PHP 버전 전환", "tooltip_magic_login": "wp-admin 원클릭 로그인", "tooltip_scan_malware": "3단계 악성코드 정밀 검사", "tooltip_core_update": "WordPress 코어 업데이트", "tooltip_backup": "백업 및 복원", "updates_badge": "{count}개 업데이트", "update_badge": "업데이트", "ssl_active": "HTTPS", "bulk_selected": "{count}개 웹사이트 선택됨", "bulk_update_plugins": "플러그인 업데이트", "bulk_update_themes": "테마 업데이트", "bulk_update_core": "WP 코어 업데이트", "bulk_change_php": "PHP 변경", "bulk_install_ssl": "SSL 설치", "drawer_plugins_title": "플러그인 ({count})", "drawer_plugins_empty": "플러그인이 없습니다.", "drawer_themes_title": "테마 ({count})", "drawer_themes_empty": "테마가 없거나 아직 검색되지 않았습니다. 'VPS 재검색'을 클릭하세요.", "plugin_active": "활성", "plugin_inactive": "비활성", "theme_in_use": "사용 중", "theme_latest": "최신 버전", "btn_turn_on": "켜기", "btn_turn_off": "끄기", "btn_update": "업데이트", "btn_update_all_drawer": "모두 업데이트", "php_modal_title": "PHP 버전 전환", "php_modal_target": "대상 PHP 버전 선택", "php_modal_desc": "시스템이 Nginx FastCGI 소켓을 자동으로 업데이트하고 서비스를 즉시 다시 로드합니다.", "btn_cancel": "취소", "btn_save_changes": "변경사항 저장", "create_modal_title": "새 WordPress 웹사이트 추가", "create_domain_label": "도메인 이름", "create_title_label": "웹사이트 제목", "create_wp_label": "WordPress 버전", "create_php_label": "PHP 버전", "create_user_label": "관리자 사용자명", "create_pass_label": "관리자 비밀번호", "create_pass_placeholder": "비워두면 자동 생성", "create_ssl_label": "Let's Encrypt SSL 인증서 자동 발급", "create_btn_submit": "생성 시작", "create_btn_submitting": "생성 중...", "backup_modal_title": "웹사이트 백업", "backup_btn_create": "백업 생성", "backup_creating": "백업 중...", "backup_empty": "백업 파일이 없습니다.", "backup_btn_restore": "복원", "backup_btn_delete": "삭제", "backup_confirm_restore": "'{filename}'에서 복원하시겠습니까?\\n현재 파일과 데이터베이스를 덮어씁니다!", "backup_confirm_delete": "백업 '{filename}'을(를) 삭제하시겠습니까?", "scan_modal_title": "악성코드 검사 결과", "scan_clean_title": "웹사이트가 완벽히 깨끗합니다!", "scan_clean_desc": "uploads 폴더에 PHP 파일이 없으며 의심스러운 웹쉘이 발견되지 않았습니다.", "btn_close": "닫기", "job_modal_preparing": "작업 준비 중...", "job_modal_completed": "완료되었습니다!", "job_modal_failed": "실패했습니다!", "toast_scan_vps_success": "{count}개 웹사이트 동기화 완료!", "toast_magic_login_error": "로그인 링크를 가져올 수 없습니다", "toast_backup_created": "백업 생성 완료: {name}", "toast_backup_restored": "웹사이트가 성공적으로 복원되었습니다!", "toast_backup_deleted": "백업이 삭제되었습니다", "language": "언어"}, "fr": {"name": "Français", "flag": "🇫🇷", "app_name": "VPS WordPress Control", "app_subtitle": "Panneau Dédié Léger", "login_title": "VPS WordPress Control", "login_subtitle": "Connectez-vous pour gérer votre serveur", "login_user_label": "Nom d'utilisateur", "login_pass_label": "Mot de passe", "login_btn": "Se connecter", "login_authenticating": "Authentification...", "login_success": "Connexion réussie !", "login_invalid": "Identifiant ou mot de passe incorrect", "login_server_error": "Erreur serveur lors de la connexion", "logout": "Déconnexion", "logged_out": "Déconnecté", "btn_scan_vps": "Scanner le VPS", "btn_scanning": "Scan en cours...", "btn_add_site": "Ajouter un site", "stat_total_sites": "Total des sites", "stat_plugins_need_update": "Extensions à mettre à jour", "stat_btn_update_all": "Tout mettre à jour", "stat_security_status": "Statut de sécurité", "stat_security_safe": "Sécurisé", "stat_security_warning": "Avertissement", "stat_btn_scan_all": "Scanner tout le VPS", "table_title": "Sites WordPress sur le VPS", "table_loading": "Chargement...", "table_found_sites": "{count} sites trouvés", "no_sites_found": "Aucun site trouvé. Cliquez sur 'Scanner le VPS' ou '+ Ajouter un site' pour commencer.", "col_domain": "Domaine", "col_version": "WP / PHP", "col_database": "Base de données", "col_ssl": "SSL", "col_plugins": "Extensions", "col_themes": "Thèmes", "col_actions": "Actions", "btn_install_ssl": "Installer SSL", "tooltip_change_php": "Changer la version de PHP", "tooltip_magic_login": "Connexion 1-clic à wp-admin", "tooltip_scan_malware": "Analyse anti-malware 3 niveaux", "tooltip_core_update": "Mettre à jour le cœur WordPress", "tooltip_backup": "Sauvegardes & Restauration", "updates_badge": "{count} màj", "update_badge": "màj", "ssl_active": "HTTPS", "bulk_selected": "{count} sites sélectionnés", "bulk_update_plugins": "Mettre à jour extensions", "bulk_update_themes": "Mettre à jour thèmes", "bulk_update_core": "Mettre à jour WP Core", "bulk_change_php": "Changer PHP", "bulk_install_ssl": "Installer SSL", "drawer_plugins_title": "Extensions ({count})", "drawer_plugins_empty": "Aucune extension trouvée.", "drawer_themes_title": "Thèmes ({count})", "drawer_themes_empty": "Aucun thème trouvé. Cliquez sur 'Scanner le VPS' pour actualiser.", "plugin_active": "Activé", "plugin_inactive": "Désactivé", "theme_in_use": "Actif", "theme_latest": "À jour", "btn_turn_on": "Activer", "btn_turn_off": "Désactiver", "btn_update": "Mettre à jour", "btn_update_all_drawer": "Tout mettre à jour", "php_modal_title": "Changer la version PHP", "php_modal_target": "Sélectionnez la version PHP cible", "php_modal_desc": "Le système mettra à jour le socket Nginx FastCGI et rechargera le service instantanément.", "btn_cancel": "Annuler", "btn_save_changes": "Enregistrer", "create_modal_title": "Ajouter un nouveau site WordPress", "create_domain_label": "Nom de domaine", "create_title_label": "Titre du site", "create_wp_label": "Version WordPress", "create_php_label": "Version PHP", "create_user_label": "Identifiant admin", "create_pass_label": "Mot de passe admin", "create_pass_placeholder": "Généré automatiquement si vide", "create_ssl_label": "Émettre automatiquement un certificat SSL Let's Encrypt", "create_btn_submit": "Créer le site", "create_btn_submitting": "Création en cours...", "backup_modal_title": "Sauvegardes du site", "backup_btn_create": "Créer une sauvegarde", "backup_creating": "Sauvegarde en cours...", "backup_empty": "Aucune sauvegarde disponible.", "backup_btn_restore": "Restaurer", "backup_btn_delete": "Supprimer", "backup_confirm_restore": "Restaurer depuis '{filename}' ?\\nCela écrasera les fichiers et la base de données actuels !", "backup_confirm_delete": "Supprimer la sauvegarde '{filename}' ?", "scan_modal_title": "Résultats de l'analyse", "scan_clean_title": "Le site est parfaitement propre !", "scan_clean_desc": "Aucun fichier PHP dans le dossier uploads, aucun webshell suspect détecté.", "btn_close": "Fermer", "job_modal_preparing": "Préparation de la tâche...", "job_modal_completed": "Terminé avec succès !", "job_modal_failed": "Échec de la tâche !", "toast_scan_vps_success": "{count} sites synchronisés !", "toast_magic_login_error": "Impossible d'obtenir l'URL de connexion", "toast_backup_created": "Sauvegarde créée : {name}", "toast_backup_restored": "Site restauré avec succès !", "toast_backup_deleted": "Sauvegarde supprimée", "language": "Langue"}, "de": {"name": "Deutsch", "flag": "🇩🇪", "app_name": "VPS WordPress Control", "app_subtitle": "Schlankes Dedicated Panel", "login_title": "VPS WordPress Control", "login_subtitle": "Melden Sie sich an, um Ihren Server zu verwalten", "login_user_label": "Benutzername", "login_pass_label": "Passwort", "login_btn": "Anmelden", "login_authenticating": "Authentifizierung...", "login_success": "Erfolgreich angemeldet!", "login_invalid": "Ungültiger Benutzername oder Passwort", "login_server_error": "Serverfehler bei der Anmeldung", "logout": "Abmelden", "logged_out": "Abgemeldet", "btn_scan_vps": "VPS neu scannen", "btn_scanning": "Scannen...", "btn_add_site": "Website hinzufügen", "stat_total_sites": "Gesamte Websites", "stat_plugins_need_update": "Plugins mit Updates", "stat_btn_update_all": "Alle aktualisieren", "stat_security_status": "Sicherheitsstatus", "stat_security_safe": "Sicher", "stat_security_warning": "Warnung", "stat_btn_scan_all": "Ganzen VPS scannen", "table_title": "WordPress-Websites auf dem VPS", "table_loading": "Wird geladen...", "table_found_sites": "{count} Websites gefunden", "no_sites_found": "Keine Websites gefunden. Klicken Sie auf 'VPS neu scannen' oder '+ Website hinzufügen'.", "col_domain": "Domain", "col_version": "WP / PHP", "col_database": "Datenbank", "col_ssl": "SSL", "col_plugins": "Plugins", "col_themes": "Themes", "col_actions": "Aktionen", "btn_install_ssl": "SSL installieren", "tooltip_change_php": "Klicken, um PHP-Version zu wechseln", "tooltip_magic_login": "1-Klick Login zu wp-admin", "tooltip_scan_malware": "3-Schichten Malware-Scan", "tooltip_core_update": "WordPress Core aktualisieren", "tooltip_backup": "Backup & Wiederherstellung", "updates_badge": "{count} Updates", "update_badge": "Update", "ssl_active": "HTTPS", "bulk_selected": "{count} Websites ausgewählt", "bulk_update_plugins": "Plugins aktualisieren", "bulk_update_themes": "Themes aktualisieren", "bulk_update_core": "WP Core aktualisieren", "bulk_change_php": "PHP wechseln", "bulk_install_ssl": "SSL installieren", "drawer_plugins_title": "Plugins ({count})", "drawer_plugins_empty": "Keine Plugins gefunden.", "drawer_themes_title": "Themes ({count})", "drawer_themes_empty": "Keine Themes gefunden. Klicken Sie auf 'VPS neu scannen'.", "plugin_active": "Aktiv", "plugin_inactive": "Inaktiv", "theme_in_use": "Aktiv", "theme_latest": "Aktuell", "btn_turn_on": "Aktivieren", "btn_turn_off": "Deaktivieren", "btn_update": "Aktualisieren", "btn_update_all_drawer": "Alle aktualisieren", "php_modal_title": "PHP-Version wechseln", "php_modal_target": "Ziel-PHP-Version auswählen", "php_modal_desc": "Das System aktualisiert automatisch das Nginx FastCGI-Socket und lädt den Dienst neu.", "btn_cancel": "Abbrechen", "btn_save_changes": "Änderungen speichern", "create_modal_title": "Neue WordPress-Website hinzufügen", "create_domain_label": "Domainname", "create_title_label": "Website-Titel", "create_wp_label": "WordPress-Version", "create_php_label": "PHP-Version", "create_user_label": "Admin-Benutzername", "create_pass_label": "Admin-Passwort", "create_pass_placeholder": "Automatisch generiert falls leer", "create_ssl_label": "Let's Encrypt SSL-Zertifikat automatisch ausstellen", "create_btn_submit": "Erstellung starten", "create_btn_submitting": "Wird erstellt...", "backup_modal_title": "Website-Backups", "backup_btn_create": "Backup erstellen", "backup_creating": "Backup läuft...", "backup_empty": "Keine Backups vorhanden.", "backup_btn_restore": "Wiederherstellen", "backup_btn_delete": "Löschen", "backup_confirm_restore": "Aus '{filename}' wiederherstellen?\\nDies überschreibt alle aktuellen Dateien und die Datenbank!", "backup_confirm_delete": "Backup '{filename}' löschen?", "scan_modal_title": "Malware-Scan-Ergebnisse", "scan_clean_title": "Website ist vollkommen sauber!", "scan_clean_desc": "Keine PHP-Dateien im uploads-Verzeichnis, keine verdächtigen Webshells gefunden.", "btn_close": "Schließen", "job_modal_preparing": "Aufgabe wird vorbereitet...", "job_modal_completed": "Erfolgreich abgeschlossen!", "job_modal_failed": "Fehlgeschlagen!", "toast_scan_vps_success": "{count} Websites synchronisiert!", "toast_magic_login_error": "Login-URL konnte nicht abgerufen werden", "toast_backup_created": "Backup erstellt: {name}", "toast_backup_restored": "Website erfolgreich wiederhergestellt!", "toast_backup_deleted": "Backup gelöscht", "language": "Sprache"}, "es": {"name": "Español", "flag": "🇪🇸", "app_name": "VPS WordPress Control", "app_subtitle": "Panel Dedicado Ligero", "login_title": "VPS WordPress Control", "login_subtitle": "Inicie sesión para administrar su servidor", "login_user_label": "Usuario", "login_pass_label": "Contraseña", "login_btn": "Iniciar Sesión", "login_authenticating": "Autenticando...", "login_success": "¡Inicio de sesión exitoso!", "login_invalid": "Usuario o contraseña inválidos", "login_server_error": "Error del servidor al iniciar sesión", "logout": "Cerrar sesión", "logged_out": "Sesión cerrada", "btn_scan_vps": "Reescanear VPS", "btn_scanning": "Escaneando...", "btn_add_site": "Agregar Sitio", "stat_total_sites": "Total de Sitios", "stat_plugins_need_update": "Plugins por actualizar", "stat_btn_update_all": "Actualizar Todo", "stat_security_status": "Estado de Seguridad", "stat_security_safe": "Seguro", "stat_security_warning": "Advertencia", "stat_btn_scan_all": "Escanear todo el VPS", "table_title": "Sitios WordPress en el VPS", "table_loading": "Cargando...", "table_found_sites": "{count} sitios encontrados", "no_sites_found": "No se encontraron sitios. Haga clic en 'Reescanear VPS' o '+ Agregar Sitio'.", "col_domain": "Dominio", "col_version": "WP / PHP", "col_database": "Base de datos", "col_ssl": "SSL", "col_plugins": "Plugins", "col_themes": "Temas", "col_actions": "Acciones", "btn_install_ssl": "Instalar SSL", "tooltip_change_php": "Haga clic para cambiar la versión de PHP", "tooltip_magic_login": "Acceso 1-clic a wp-admin", "tooltip_scan_malware": "Escaneo de malware en 3 capas", "tooltip_core_update": "Actualizar WordPress Core", "tooltip_backup": "Copia de Seguridad y Restauración", "updates_badge": "{count} act.", "update_badge": "actualizar", "ssl_active": "HTTPS", "bulk_selected": "{count} sitios seleccionados", "bulk_update_plugins": "Actualizar Plugins", "bulk_update_themes": "Actualizar Temas", "bulk_update_core": "Actualizar WP Core", "bulk_change_php": "Cambiar PHP", "bulk_install_ssl": "Instalar SSL", "drawer_plugins_title": "Plugins ({count})", "drawer_plugins_empty": "No se encontraron plugins.", "drawer_themes_title": "Temas ({count})", "drawer_themes_empty": "No se encontraron temas. Haga clic en 'Reescanear VPS' para actualizar.", "plugin_active": "Activo", "plugin_inactive": "Inactivo", "theme_in_use": "En uso", "theme_latest": "Actualizado", "btn_turn_on": "Activar", "btn_turn_off": "Desactivar", "btn_update": "Actualizar", "btn_update_all_drawer": "Actualizar Todo", "php_modal_title": "Cambiar Versión de PHP", "php_modal_target": "Seleccione la versión de PHP de destino", "php_modal_desc": "El sistema actualizará automáticamente el socket Nginx FastCGI y recargará el servicio de inmediato.", "btn_cancel": "Cancelar", "btn_save_changes": "Guardar Cambios", "create_modal_title": "Agregar Nuevo Sitio WordPress", "create_domain_label": "Nombre de Dominio", "create_title_label": "Título del Sitio", "create_wp_label": "Versión de WordPress", "create_php_label": "Versión de PHP", "create_user_label": "Usuario Administrador", "create_pass_label": "Contraseña Administrador", "create_pass_placeholder": "Auto-generada si está vacía", "create_ssl_label": "Emitir automáticamente certificado SSL Let's Encrypt", "create_btn_submit": "Comenzar Creación", "create_btn_submitting": "Creando...", "backup_modal_title": "Copias de Seguridad", "backup_btn_create": "Crear Copia", "backup_creating": "Creando copia...", "backup_empty": "No hay copias de seguridad.", "backup_btn_restore": "Restaurar", "backup_btn_delete": "Eliminar", "backup_confirm_restore": "¿Restaurar desde '{filename}'?\\n¡Esto sobrescribirá los archivos y la base de datos actuales!", "backup_confirm_delete": "¿Eliminar la copia '{filename}'?", "scan_modal_title": "Resultados del Escaneo de Malware", "scan_clean_title": "¡El sitio web está completamente limpio!", "scan_clean_desc": "No hay archivos PHP en uploads, no se detectaron webshells sospechosos.", "btn_close": "Cerrar", "job_modal_preparing": "Preparando tarea...", "job_modal_completed": "¡Completado con éxito!", "job_modal_failed": "¡Error en la tarea!", "toast_scan_vps_success": "¡{count} sitios sincronizados!", "toast_magic_login_error": "No se pudo obtener la URL de inicio de sesión", "toast_backup_created": "Copia creada: {name}", "toast_backup_restored": "¡Sitio restaurado con éxito!", "toast_backup_deleted": "Copia eliminada", "language": "Idioma"}, "ru": {"name": "Русский", "flag": "🇷🇺", "app_name": "VPS WordPress Control", "app_subtitle": "Легкая панель управления сервером", "login_title": "VPS WordPress Control", "login_subtitle": "Войдите для управления сервером", "login_user_label": "Логин", "login_pass_label": "Пароль", "login_btn": "Войти", "login_authenticating": "Авторизация...", "login_success": "Успешный вход!", "login_invalid": "Неверное имя пользователя или пароль", "login_server_error": "Ошибка сервера при входе", "logout": "Выйти", "logged_out": "Вы вышли из системы", "btn_scan_vps": "Пересканировать VPS", "btn_scanning": "Сканирование...", "btn_add_site": "Добавить сайт", "stat_total_sites": "Всего сайтов", "stat_plugins_need_update": "Требуют обновления", "stat_btn_update_all": "Обновить все", "stat_security_status": "Безопасность", "stat_security_safe": "Безопасно", "stat_security_warning": "Внимание", "stat_btn_scan_all": "Сканировать весь VPS", "table_title": "Сайты WordPress на сервере", "table_loading": "Загрузка...", "table_found_sites": "Найдено сайтов: {count}", "no_sites_found": "Сайты не найдены. Нажмите 'Пересканировать VPS' или '+ Добавить сайт'.", "col_domain": "Домен", "col_version": "WP / PHP", "col_database": "База данных", "col_ssl": "SSL", "col_plugins": "Плагины", "col_themes": "Темы", "col_actions": "Действия", "btn_install_ssl": "Установить SSL", "tooltip_change_php": "Нажмите для смены версии PHP", "tooltip_magic_login": "Вход в wp-admin в 1 клик", "tooltip_scan_malware": "3-уровневое сканирование на вредоносы", "tooltip_core_update": "Обновить ядро WordPress", "tooltip_backup": "Бэкапы и восстановление", "updates_badge": "{count} обновл.", "update_badge": "обновить", "ssl_active": "HTTPS", "bulk_selected": "Выбрано сайтов: {count}", "bulk_update_plugins": "Обновить плагины", "bulk_update_themes": "Обновить темы", "bulk_update_core": "Обновить ядро WP", "bulk_change_php": "Сменить PHP", "bulk_install_ssl": "Установить SSL", "drawer_plugins_title": "Плагины ({count})", "drawer_plugins_empty": "Плагины не найдены.", "drawer_themes_title": "Темы ({count})", "drawer_themes_empty": "Темы не найдены. Нажмите 'Пересканировать VPS' для обновления.", "plugin_active": "Активен", "plugin_inactive": "Отключен", "theme_in_use": "Активна", "theme_latest": "Актуальная", "btn_turn_on": "Включить", "btn_turn_off": "Выключить", "btn_update": "Обновить", "btn_update_all_drawer": "Обновить все", "php_modal_title": "Смена версии PHP", "php_modal_target": "Выберите целевую версию PHP", "php_modal_desc": "Система автоматически обновит сокет Nginx FastCGI и перезагрузит службу.", "btn_cancel": "Отмена", "btn_save_changes": "Сохранить", "create_modal_title": "Добавить новый сайт WordPress", "create_domain_label": "Доменное имя", "create_title_label": "Название сайта", "create_wp_label": "Версия WordPress", "create_php_label": "Версия PHP", "create_user_label": "Логин администратора", "create_pass_label": "Пароль администратора", "create_pass_placeholder": "Сгенерируется автоматически, если пусто", "create_ssl_label": "Автоматически выпустить SSL-сертификат Let's Encrypt", "create_btn_submit": "Начать создание", "create_btn_submitting": "Создание...", "backup_modal_title": "Резервные копии сайта", "backup_btn_create": "Создать бэкап", "backup_creating": "Создание бэкапа...", "backup_empty": "Резервных копий нет.", "backup_btn_restore": "Восстановить", "backup_btn_delete": "Удалить", "backup_confirm_restore": "Восстановить из '{filename}'?\\nЭто перезапишет текущие файлы и базу данных сайта!", "backup_confirm_delete": "Удалить резервную копию '{filename}'?", "scan_modal_title": "Результаты сканирования", "scan_clean_title": "Сайт абсолютно чист!", "scan_clean_desc": "В папке uploads нет PHP файлов, подозрительных веб-шеллов не обнаружено.", "btn_close": "Закрыть", "job_modal_preparing": "Подготовка задачи...", "job_modal_completed": "Успешно завершено!", "job_modal_failed": "Ошибка выполнения!", "toast_scan_vps_success": "Синхронизировано сайтов: {count}!", "toast_magic_login_error": "Не удалось получить ссылку для входа", "toast_backup_created": "Создан бэкап: {name}", "toast_backup_restored": "Сайт успешно восстановлен!", "toast_backup_deleted": "Бэкап удален", "language": "Язык"}, "pt": {"name": "Português", "flag": "🇧🇷", "app_name": "VPS WordPress Control", "app_subtitle": "Painel Dedicado Leve", "login_title": "VPS WordPress Control", "login_subtitle": "Faça login para gerenciar seu servidor", "login_user_label": "Usuário", "login_pass_label": "Senha", "login_btn": "Entrar", "login_authenticating": "Autenticando...", "login_success": "Login realizado com sucesso!", "login_invalid": "Usuário ou senha inválidos", "login_server_error": "Erro no servidor ao fazer login", "logout": "Sair", "logged_out": "Sessão encerrada", "btn_scan_vps": "Escanear VPS", "btn_scanning": "Escaneando...", "btn_add_site": "Adicionar Site", "stat_total_sites": "Total de Sites", "stat_plugins_need_update": "Plugins com Atualização", "stat_btn_update_all": "Atualizar Tudo", "stat_security_status": "Status de Segurança", "stat_security_safe": "Seguro", "stat_security_warning": "Aviso", "stat_btn_scan_all": "Escanear todo o VPS", "table_title": "Sites WordPress no VPS", "table_loading": "Carregando...", "table_found_sites": "{count} sites encontrados", "no_sites_found": "Nenhum site encontrado. Clique em 'Escanear VPS' ou '+ Adicionar Site'.", "col_domain": "Domínio", "col_version": "WP / PHP", "col_database": "Banco de dados", "col_ssl": "SSL", "col_plugins": "Plugins", "col_themes": "Temas", "col_actions": "Ações", "btn_install_ssl": "Instalar SSL", "tooltip_change_php": "Clique para mudar a versão do PHP", "tooltip_magic_login": "Login 1-clique no wp-admin", "tooltip_scan_malware": "Varredura de malware em 3 camadas", "tooltip_core_update": "Atualizar o WordPress Core", "tooltip_backup": "Backup & Restauração", "updates_badge": "{count} atualiz.", "update_badge": "atualizar", "ssl_active": "HTTPS", "bulk_selected": "{count} sites selecionados", "bulk_update_plugins": "Atualizar Plugins", "bulk_update_themes": "Atualizar Temas", "bulk_update_core": "Atualizar WP Core", "bulk_change_php": "Mudar PHP", "bulk_install_ssl": "Instalar SSL", "drawer_plugins_title": "Plugins ({count})", "drawer_plugins_empty": "Nenhum plugin encontrado.", "drawer_themes_title": "Temas ({count})", "drawer_themes_empty": "Nenhum tema encontrado. Clique em 'Escanear VPS' para atualizar.", "plugin_active": "Ativo", "plugin_inactive": "Inativo", "theme_in_use": "Em uso", "theme_latest": "Atualizado", "btn_turn_on": "Ativar", "btn_turn_off": "Desativar", "btn_update": "Atualizar", "btn_update_all_drawer": "Atualizar Tudo", "php_modal_title": "Trocar Versão do PHP", "php_modal_target": "Selecione a versão de PHP desejada", "php_modal_desc": "O sistema atualizará o socket FastCGI no Nginx e recarregará o serviço imediatamente.", "btn_cancel": "Cancelar", "btn_save_changes": "Salvar Alterações", "create_modal_title": "Adicionar Novo Site WordPress", "create_domain_label": "Nome de Domínio", "create_title_label": "Título do Site", "create_wp_label": "Versão do WordPress", "create_php_label": "Versão do PHP", "create_user_label": "Usuário Administrador", "create_pass_label": "Senha Administrador", "create_pass_placeholder": "Gerada automaticamente se vazia", "create_ssl_label": "Emitir certificado SSL Let's Encrypt automaticamente", "create_btn_submit": "Iniciar Criação", "create_btn_submitting": "Criando...", "backup_modal_title": "Backups do Site", "backup_btn_create": "Criar Backup", "backup_creating": "Criando backup...", "backup_empty": "Nenhum backup disponível.", "backup_btn_restore": "Restaurar", "backup_btn_delete": "Excluir", "backup_confirm_restore": "Restaurar a partir de '{filename}'?\\nIsso sobrescreverá os arquivos e o banco de dados atuais!", "backup_confirm_delete": "Excluir o backup '{filename}'?", "scan_modal_title": "Resultados da Varredura", "scan_clean_title": "O site está totalmente limpo!", "scan_clean_desc": "Nenhum arquivo PHP em uploads, nenhum webshell detectado.", "btn_close": "Fechar", "job_modal_preparing": "Preparando tarefa...", "job_modal_completed": "Concluído com sucesso!", "job_modal_failed": "Falha na tarefa!", "toast_scan_vps_success": "{count} sites sincronizados!", "toast_magic_login_error": "Não foi possível obter o link de login", "toast_backup_created": "Backup criado: {name}", "toast_backup_restored": "Site restaurado com sucesso!", "toast_backup_deleted": "Backup excluído", "language": "Idioma"}};
+
+    let currentLang = localStorage.getItem('wp_control_lang') || 'en';
+    if (!I18N[currentLang]) currentLang = 'en';
+
+    function t(key, params = {}) {
+      const dict = I18N[currentLang] || I18N['en'];
+      let str = dict[key] !== undefined ? dict[key] : (I18N['en'][key] !== undefined ? I18N['en'][key] : key);
+      for (const [k, v] of Object.entries(params)) {
+        str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+      }
+      return str;
+    }
+
+    function initLanguage() {
+      renderLanguageDropdowns();
+      applyLanguage(currentLang);
+    }
+
+    function renderLanguageDropdowns() {
+      const langEntries = Object.entries(I18N);
+      const appMenu = document.getElementById('lang-dropdown-menu');
+      const loginMenu = document.getElementById('login-lang-dropdown-menu');
+
+      const generateItems = () => langEntries.map(([code, data]) => `
+        <button type="button" onclick="changeLanguage('${code}')" class="w-full text-left px-3 py-2 text-xs flex items-center space-x-2.5 hover:bg-slate-700/60 transition ${code === currentLang ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-300'}">
+          <span class="text-sm">${data.flag}</span>
+          <span class="flex-1">${data.name}</span>
+          ${code === currentLang ? '<i class="fa-solid fa-check text-[10px] text-indigo-400"></i>' : ''}
+        </button>
+      `).join('');
+
+      if (appMenu) appMenu.innerHTML = generateItems();
+      if (loginMenu) loginMenu.innerHTML = generateItems();
+    }
+
+    function toggleLangDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('lang-dropdown-menu');
+      if (menu) menu.classList.toggle('hidden');
+    }
+
+    function toggleLoginLangDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('login-lang-dropdown-menu');
+      if (menu) menu.classList.toggle('hidden');
+    }
+
+    function handleGlobalClick(e) {
+      const appWrapper = document.getElementById('lang-dropdown-wrapper');
+      const loginWrapper = document.getElementById('login-lang-dropdown-wrapper');
+      const appMenu = document.getElementById('lang-dropdown-menu');
+      const loginMenu = document.getElementById('login-lang-dropdown-menu');
+
+      if (appWrapper && !appWrapper.contains(e.target) && appMenu) {
+        appMenu.classList.add('hidden');
+      }
+      if (loginWrapper && !loginWrapper.contains(e.target) && loginMenu) {
+        loginMenu.classList.add('hidden');
+      }
+    }
+
+    function changeLanguage(langCode) {
+      if (!I18N[langCode]) return;
+      currentLang = langCode;
+      localStorage.setItem('wp_control_lang', langCode);
+      document.documentElement.lang = langCode;
+
+      // Close dropdowns
+      const appMenu = document.getElementById('lang-dropdown-menu');
+      const loginMenu = document.getElementById('login-lang-dropdown-menu');
+      if (appMenu) appMenu.classList.add('hidden');
+      if (loginMenu) loginMenu.classList.add('hidden');
+
+      applyLanguage(langCode);
+      renderLanguageDropdowns();
+
+      // Refresh dynamic UI components
+      if (currentSites && currentSites.length > 0) {
+        renderSites(currentSites);
+      }
+      updateSelectedCount();
+
+      // Refresh opened modals or drawers if active
+      if (currentDrawerSiteId && !document.getElementById('drawer-plugins').classList.contains('translate-x-full')) {
+        openPluginDrawer(currentDrawerSiteId);
+      }
+      if (currentThemeDrawerSiteId && !document.getElementById('drawer-themes').classList.contains('translate-x-full')) {
+        openThemeDrawer(currentThemeDrawerSiteId);
+      }
+      if (currentBackupSiteId && !document.getElementById('modal-backup').classList.contains('hidden')) {
+        loadBackups();
+      }
+    }
+
+    function applyLanguage(langCode) {
+      const data = I18N[langCode] || I18N['en'];
+
+      // Update flag & name buttons
+      const flagEl = document.getElementById('current-lang-flag');
+      const nameEl = document.getElementById('current-lang-name');
+      if (flagEl) flagEl.innerText = data.flag;
+      if (nameEl) nameEl.innerText = data.name;
+
+      const loginFlagEl = document.getElementById('login-current-lang-flag');
+      const loginNameEl = document.getElementById('login-current-lang-name');
+      if (loginFlagEl) loginFlagEl.innerText = data.flag;
+      if (loginNameEl) loginNameEl.innerText = data.name;
+
+      // Apply data-i18n text
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && data[key] !== undefined) {
+          el.innerText = data[key];
+        }
+      });
+
+      // Apply data-i18n-placeholder
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && data[key] !== undefined) {
+          el.placeholder = data[key];
+        }
+      });
+
+      // Apply data-i18n-title
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (key && data[key] !== undefined) {
+          el.title = data[key];
+        }
+      });
+    }
+
+    // ==================== APPLICATION STATE & API ====================
     let currentSites = [];
     let selectedSiteIds = new Set();
     let currentPHPChangeSiteId = null;
@@ -405,7 +572,7 @@
       if (res.status === 401) {
         localStorage.removeItem('wp_control_token');
         showLoginView();
-        throw new Error('Yêu cầu đăng nhập');
+        throw new Error('Authentication required');
       }
       return res;
     }
@@ -451,7 +618,7 @@
       const pass = document.getElementById('login-pass').value;
       const btn = document.getElementById('btn-login-submit');
 
-      btn.innerText = 'Đang xác thực...';
+      btn.innerText = t('login_authenticating');
       btn.disabled = true;
 
       try {
@@ -467,14 +634,14 @@
           loadPHPVersions();
           loadSites();
           loadVersion();
-          showToast('Đăng nhập thành công!', 'success');
+          showToast(t('login_success'), 'success');
         } else {
-          showToast(data.error || 'Sai tài khoản hoặc mật khẩu', 'error');
+          showToast(data.error || t('login_invalid'), 'error');
         }
       } catch (err) {
-        showToast('Lỗi máy chủ khi đăng nhập', 'error');
+        showToast(t('login_server_error'), 'error');
       } finally {
-        btn.innerText = 'Đăng Nhập';
+        btn.innerText = t('login_btn');
         btn.disabled = false;
       }
     }
@@ -482,7 +649,7 @@
     function handleLogout() {
       localStorage.removeItem('wp_control_token');
       showLoginView();
-      showToast('Đã đăng xuất', 'info');
+      showToast(t('logged_out'), 'info');
     }
 
     async function loadVersion() {
@@ -515,7 +682,7 @@
         updateSelectedCount();
         renderSites(currentSites);
       } catch (err) {
-        showToast('Không thể tải danh sách website', 'error');
+        showToast('Error loading websites', 'error');
       }
     }
 
@@ -525,10 +692,10 @@
       
       let totalUpdates = 0;
       document.getElementById('stat-total-sites').innerText = sites.length;
-      document.getElementById('table-subtitle').innerText = `Tìm thấy ${sites.length} website`;
+      document.getElementById('table-subtitle').innerText = t('table_found_sites', { count: sites.length });
 
       if (sites.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-slate-500">Chưa có website nào. Nhấn "Quét lại VPS" hoặc "+ Thêm Website" để bắt đầu.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">${t('no_sites_found')}</td></tr>`;
         return;
       }
 
@@ -547,7 +714,7 @@
           </td>
           <td class="px-4 py-3.5">
             <span class="inline-block px-2 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300">WP ${s.wp_version || 'N/A'}</span>
-            <button onclick="openPHPModal(${s.id}, '${s.domain}', '${s.php_version}')" title="Click để đổi phiên bản PHP" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900 transition ml-1">
+            <button onclick="openPHPModal(${s.id}, '${s.domain}', '${s.php_version}')" title="${t('tooltip_change_php')}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900 transition ml-1">
               <span>PHP ${s.php_version}</span>
               <i class="fa-solid fa-pen ml-1 text-[8px] opacity-70"></i>
             </button>
@@ -555,35 +722,35 @@
           <td class="px-4 py-3.5 font-mono text-[11px] text-slate-400">${s.db_name || '-'}</td>
           <td class="px-4 py-3.5">
             ${s.ssl_active 
-              ? '<span class="inline-flex items-center text-emerald-400 text-[11px] font-medium"><i class="fa-solid fa-lock mr-1"></i> HTTPS</span>' 
-              : `<button onclick="issueSSL(${s.id}, '${s.domain}')" title="Click để cài đặt Let's Encrypt SSL" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition">
+              ? `<span class="inline-flex items-center text-emerald-400 text-[11px] font-medium"><i class="fa-solid fa-lock mr-1"></i> ${t('ssl_active')}</span>` 
+              : `<button onclick="issueSSL(${s.id}, '${s.domain}')" title="${t('btn_install_ssl')}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition">
                   <i class="fa-solid fa-shield-halved mr-1"></i>
-                  <span>Cài SSL</span>
+                  <span>${t('btn_install_ssl')}</span>
                 </button>`}
           </td>
           <td class="px-4 py-3.5">
             <button onclick="openPluginDrawer(${s.id})" class="text-indigo-400 hover:text-indigo-300 underline font-medium">
               ${s.total_plugins || 0} plugins
             </button>
-            ${s.pending_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.pending_updates} update</span>` : ''}
+            ${s.pending_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.pending_updates} ${t('update_badge')}</span>` : ''}
           </td>
           <td class="px-4 py-3.5">
             <button onclick="openThemeDrawer(${s.id})" class="text-purple-400 hover:text-purple-300 underline font-medium">
               ${s.total_themes || 0} themes
             </button>
-            ${s.theme_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.theme_updates} update</span>` : ''}
+            ${s.theme_updates > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300">${s.theme_updates} ${t('update_badge')}</span>` : ''}
           </td>
           <td class="px-4 py-3.5 text-right space-x-1.5">
-            <button onclick="magicLogin(${s.id})" title="Đăng nhập 1-click vào wp-admin" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
+            <button onclick="magicLogin(${s.id})" title="${t('tooltip_magic_login')}" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </button>
-            <button onclick="scanSiteMalware(${s.id})" title="Quét mã độc 3 lớp" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-amber-400 rounded">
+            <button onclick="scanSiteMalware(${s.id})" title="${t('tooltip_scan_malware')}" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-amber-400 rounded">
               <i class="fa-solid fa-shield-virus"></i>
             </button>
-            <button onclick="coreUpdate(${s.id}, '${s.domain}')" title="Cập nhật WordPress Core" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded">
+            <button onclick="coreUpdate(${s.id}, '${s.domain}')" title="${t('tooltip_core_update')}" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded">
               <i class="fa-brands fa-wordpress"></i>
             </button>
-            <button onclick="openBackupModal(${s.id}, '${s.domain}')" title="Sao lưu & Khôi phục" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-sky-400 rounded">
+            <button onclick="openBackupModal(${s.id}, '${s.domain}')" title="${t('tooltip_backup')}" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-sky-400 rounded">
               <i class="fa-solid fa-box-archive"></i>
             </button>
           </td>
@@ -619,7 +786,7 @@
       const label = document.getElementById('selected-count-label');
       if (count > 0) {
         bar.classList.remove('hidden');
-        label.innerText = `Đã chọn ${count} website`;
+        label.innerText = t('bulk_selected', { count });
       } else {
         bar.classList.add('hidden');
       }
@@ -628,7 +795,7 @@
     async function bulkUpdateSelected() {
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
-      showToast(`Đang khởi tạo tác vụ cập nhật cho ${ids.length} website...`, 'info');
+      showToast(`${t('bulk_update_plugins')}: ${ids.length}...`, 'info');
 
       try {
         const res = await apiFetch('/api/jobs/bulk-update', {
@@ -637,17 +804,17 @@
         });
         const data = await res.json();
         if (data.job_id) {
-          openJobModal(`Cập nhật Plugins (${ids.length} website)`, data.job_id, () => loadSites());
+          openJobModal(`${t('bulk_update_plugins')} (${ids.length})`, data.job_id, () => loadSites());
         } else {
-          showToast('Không thể tạo job cập nhật', 'error');
+          showToast('Failed to create job', 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi cập nhật hàng loạt', 'error');
+        showToast('Error during bulk update', 'error');
       }
     }
 
     async function bulkUpdateAllSites() {
-      showToast('Đang tạo tác vụ cập nhật hàng loạt...', 'info');
+      showToast(t('stat_btn_update_all') + '...', 'info');
       try {
         const res = await apiFetch('/api/jobs/bulk-update', {
           method: 'POST',
@@ -655,10 +822,10 @@
         });
         const data = await res.json();
         if (data.job_id) {
-          openJobModal('Cập nhật Plugin Hàng Loạt', data.job_id, () => loadSites());
+          openJobModal(t('stat_btn_update_all'), data.job_id, () => loadSites());
         }
       } catch (err) {
-        showToast('Lỗi tạo tác vụ cập nhật', 'error');
+        showToast('Error creating bulk update job', 'error');
       }
     }
 
@@ -666,7 +833,7 @@
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
 
-      openStepTaskModal('Cập nhật Themes Hàng Loạt', `Bắt đầu cập nhật Themes cho ${ids.length} website đã chọn...`);
+      openStepTaskModal(t('bulk_update_themes'), `${t('bulk_update_themes')}: ${ids.length}...`);
 
       let successCount = 0;
       let failedList = [];
@@ -676,7 +843,7 @@
         const site = currentSites.find(s => s.id === id);
         const domain = site ? site.domain : `Site #${id}`;
 
-        updateStepTaskProgress(i, ids.length, `Đang cập nhật themes [${i + 1}/${ids.length}]: ${domain}...`);
+        updateStepTaskProgress(i, ids.length, `[${i + 1}/${ids.length}]: ${domain}...`);
 
         try {
           const res = await apiFetch(`/api/sites/${id}/themes/update-all`, { method: 'POST' });
@@ -684,30 +851,29 @@
           if (data.status === 'success') {
             successCount++;
           } else {
-            failedList.push(`${domain}: ${data.error || 'Thất bại'}`);
+            failedList.push(`${domain}: ${data.error || 'Failed'}`);
           }
         } catch (e) {
-          failedList.push(`${domain}: Lỗi kết nối`);
+          failedList.push(`${domain}: Connection error`);
         }
       }
 
-      updateStepTaskProgress(ids.length, ids.length, 'Hoàn thành!');
-      let resultMsg = `Hoàn tất cập nhật Themes! Thành công: ${successCount}/${ids.length} website.`;
+      updateStepTaskProgress(ids.length, ids.length, t('job_modal_completed'));
+      let resultMsg = `${t('job_modal_completed')}: ${successCount}/${ids.length}`;
       if (failedList.length > 0) {
-        resultMsg += `\nLỗi: ` + failedList.join(', ');
+        resultMsg += `\nError: ` + failedList.join(', ');
       }
-      completeStepTaskModal('Cập nhật Themes Hàng Loạt', resultMsg, successCount > 0);
+      completeStepTaskModal(t('bulk_update_themes'), resultMsg, successCount > 0);
       loadSites();
     }
 
     // ==================== LOCAL STEPPED TASK MODAL ====================
-    // Mở popup modal với tiến trình từng bước cho các tác vụ tuần tự
     function openStepTaskModal(title, initialMsg) {
       document.getElementById('job-modal-title').innerText = title;
       document.getElementById('job-modal-icon').className = 'fa-solid fa-spinner fa-spin text-indigo-400';
       document.getElementById('job-progress-bar').style.width = '0%';
       document.getElementById('job-progress-label').innerText = '0%';
-      document.getElementById('job-progress-msg').innerText = initialMsg || 'Đang chuẩn bị...';
+      document.getElementById('job-progress-msg').innerText = initialMsg || t('job_modal_preparing');
       document.getElementById('btn-close-job').classList.add('hidden');
       document.getElementById('modal-job').classList.remove('hidden');
 
@@ -728,12 +894,12 @@
       const icon = document.getElementById('job-modal-icon');
       if (isSuccess) {
         icon.className = 'fa-solid fa-circle-check text-emerald-400';
-        document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+        document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_completed');
         document.getElementById('job-progress-bar').style.width = '100%';
         document.getElementById('job-progress-label').innerText = '100%';
       } else {
         icon.className = 'fa-solid fa-circle-xmark text-red-400';
-        document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+        document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_failed');
       }
       if (msg) document.getElementById('job-progress-msg').innerText = msg;
       document.getElementById('btn-close-job').classList.remove('hidden');
@@ -741,20 +907,20 @@
 
     // ==================== CORE UPDATE ====================
     async function coreUpdate(siteId, domain) {
-      openStepTaskModal(`Cập nhật WP Core: ${domain}`, `Đang tải và cập nhật phiên bản WordPress Core mới nhất cho ${domain}...`);
-      updateStepTaskProgress(1, 3, `Đang chạy wp core update cho ${domain}...`);
+      openStepTaskModal(`WP Core: ${domain}`, `${t('tooltip_core_update')}: ${domain}...`);
+      updateStepTaskProgress(1, 3, `wp core update ${domain}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/core-update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          updateStepTaskProgress(3, 3, data.message || `Đã cập nhật WordPress Core thành công!`);
-          completeStepTaskModal(`Cập nhật WP Core: ${domain}`, data.message || `Đã nâng cấp phiên bản ${data.new_version || ''} thành công!`, true);
+          updateStepTaskProgress(3, 3, data.message || t('job_modal_completed'));
+          completeStepTaskModal(`WP Core: ${domain}`, data.message || `Version ${data.new_version || ''}`, true);
           loadSites();
         } else {
-          completeStepTaskModal(`Cập nhật WP Core: ${domain}`, data.error || 'Cập nhật Core thất bại', false);
+          completeStepTaskModal(`WP Core: ${domain}`, data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal(`Cập nhật WP Core: ${domain}`, 'Lỗi kết nối khi gửi lệnh cập nhật Core', false);
+        completeStepTaskModal(`WP Core: ${domain}`, 'Connection error', false);
       }
     }
 
@@ -762,7 +928,7 @@
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
 
-      openStepTaskModal('Cập nhật WordPress Core Hàng Loạt', `Bắt đầu cập nhật WP Core cho ${ids.length} website đã chọn...`);
+      openStepTaskModal(t('bulk_update_core'), `${t('bulk_update_core')}: ${ids.length}...`);
 
       let successCount = 0;
       let failedList = [];
@@ -772,7 +938,7 @@
         const site = currentSites.find(s => s.id === id);
         const domain = site ? site.domain : `Site #${id}`;
 
-        updateStepTaskProgress(i, ids.length, `Đang cập nhật [${i + 1}/${ids.length}]: ${domain}...`);
+        updateStepTaskProgress(i, ids.length, `[${i + 1}/${ids.length}]: ${domain}...`);
 
         try {
           const res = await apiFetch(`/api/sites/${id}/core-update`, { method: 'POST' });
@@ -780,38 +946,38 @@
           if (data.status === 'success') {
             successCount++;
           } else {
-            failedList.push(`${domain}: ${data.error || 'Thất bại'}`);
+            failedList.push(`${domain}: ${data.error || 'Failed'}`);
           }
         } catch (e) {
-          failedList.push(`${domain}: Lỗi kết nối`);
+          failedList.push(`${domain}: Connection error`);
         }
       }
 
-      updateStepTaskProgress(ids.length, ids.length, 'Hoàn thành!');
-      let resultMsg = `Hoàn tất nâng cấp WP Core! Thành công: ${successCount}/${ids.length} website.`;
+      updateStepTaskProgress(ids.length, ids.length, t('job_modal_completed'));
+      let resultMsg = `${t('job_modal_completed')}: ${successCount}/${ids.length}`;
       if (failedList.length > 0) {
-        resultMsg += `\nLỗi: ` + failedList.join(', ');
+        resultMsg += `\nError: ` + failedList.join(', ');
       }
-      completeStepTaskModal('Cập nhật WordPress Core Hàng Loạt', resultMsg, successCount > 0);
+      completeStepTaskModal(t('bulk_update_core'), resultMsg, successCount > 0);
       loadSites();
     }
 
     // ==================== SSL MANAGEMENT ====================
     async function issueSSL(siteId, domain) {
-      openStepTaskModal(`Cài đặt SSL: ${domain}`, `Đang khởi tạo chứng chỉ Let's Encrypt SSL cho ${domain}...`);
-      updateStepTaskProgress(1, 2, `Đang xác thực tên miền và liên hệ máy chủ Let's Encrypt qua Certbot...`);
+      openStepTaskModal(`SSL: ${domain}`, `${t('btn_install_ssl')}: ${domain}...`);
+      updateStepTaskProgress(1, 2, `Certbot Let's Encrypt ${domain}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/issue-ssl`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          updateStepTaskProgress(2, 2, `Cấp chứng chỉ và cấu hình Nginx HTTPS thành công!`);
-          completeStepTaskModal(`Cài đặt SSL: ${domain}`, data.message || `Đã kích hoạt HTTPS thành công cho ${domain}!`, true);
+          updateStepTaskProgress(2, 2, t('job_modal_completed'));
+          completeStepTaskModal(`SSL: ${domain}`, data.message || `HTTPS activated for ${domain}!`, true);
           loadSites();
         } else {
-          completeStepTaskModal(`Cài đặt SSL: ${domain}`, data.error || 'Cấp SSL thất bại. Vui lòng kiểm tra lại DNS trỏ đúng IP VPS.', false);
+          completeStepTaskModal(`SSL: ${domain}`, data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal(`Cài đặt SSL: ${domain}`, 'Lỗi kết nối khi gửi yêu cầu cấp SSL', false);
+        completeStepTaskModal(`SSL: ${domain}`, 'Connection error', false);
       }
     }
 
@@ -819,7 +985,7 @@
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
 
-      openStepTaskModal('Cài Đặt SSL Hàng Loạt', `Bắt đầu cấp chứng chỉ Let's Encrypt cho ${ids.length} website...`);
+      openStepTaskModal(t('bulk_install_ssl'), `${t('bulk_install_ssl')}: ${ids.length}...`);
 
       let successCount = 0;
       let failedList = [];
@@ -829,7 +995,7 @@
         const site = currentSites.find(s => s.id === id);
         const domain = site ? site.domain : `Site #${id}`;
 
-        updateStepTaskProgress(i, ids.length, `Đang cấp SSL [${i + 1}/${ids.length}]: ${domain}...`);
+        updateStepTaskProgress(i, ids.length, `[${i + 1}/${ids.length}]: ${domain}...`);
 
         try {
           const res = await apiFetch(`/api/sites/${id}/issue-ssl`, { method: 'POST' });
@@ -837,27 +1003,27 @@
           if (data.status === 'success') {
             successCount++;
           } else {
-            failedList.push(`${domain}: ${data.error || 'Lỗi certbot'}`);
+            failedList.push(`${domain}: ${data.error || 'Certbot error'}`);
           }
         } catch (e) {
-          failedList.push(`${domain}: Lỗi kết nối`);
+          failedList.push(`${domain}: Connection error`);
         }
       }
 
-      updateStepTaskProgress(ids.length, ids.length, 'Hoàn tất!');
-      let resultMsg = `Hoàn tất cấp SSL! Kích hoạt thành công: ${successCount}/${ids.length} website.`;
+      updateStepTaskProgress(ids.length, ids.length, t('job_modal_completed'));
+      let resultMsg = `${t('job_modal_completed')}: ${successCount}/${ids.length}`;
       if (failedList.length > 0) {
-        resultMsg += `\nLỗi: ` + failedList.join(', ');
+        resultMsg += `\nError: ` + failedList.join(', ');
       }
-      completeStepTaskModal('Cài Đặt SSL Hàng Loạt', resultMsg, successCount > 0);
+      completeStepTaskModal(t('bulk_install_ssl'), resultMsg, successCount > 0);
       loadSites();
     }
 
     function bulkOpenPHPModal() {
       if (selectedSiteIds.size === 0) return;
       const ids = Array.from(selectedSiteIds);
-      currentPHPChangeSiteId = ids; // Lưu mảng ID
-      document.getElementById('php-modal-domain').innerText = `${ids.length} website đã chọn`;
+      currentPHPChangeSiteId = ids;
+      document.getElementById('php-modal-domain').innerText = `${ids.length} websites`;
       const select = document.getElementById('select-php-version');
       select.innerHTML = '';
       availablePHPVersions.forEach(v => {
@@ -876,7 +1042,7 @@
       document.getElementById('job-modal-icon').className = 'fa-solid fa-spinner fa-spin text-indigo-400';
       document.getElementById('job-progress-bar').style.width = '0%';
       document.getElementById('job-progress-label').innerText = '0%';
-      document.getElementById('job-progress-msg').innerText = 'Đang khởi động...';
+      document.getElementById('job-progress-msg').innerText = t('job_modal_preparing');
       document.getElementById('btn-close-job').classList.add('hidden');
       document.getElementById('modal-job').classList.remove('hidden');
 
@@ -891,7 +1057,6 @@
 
       let pollInterval = null;
 
-      // Hàm fallback polling qua GET /api/jobs/{id} nếu SSE bị gián đoạn đường truyền
       const checkStatusPolling = async () => {
         try {
           const res = await apiFetch(`/api/jobs/${jobId}`);
@@ -906,14 +1071,14 @@
             if (j.status === 'completed') {
               clearInterval(pollInterval);
               document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-check text-emerald-400';
-              document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+              document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_completed');
               document.getElementById('btn-close-job').classList.remove('hidden');
               if (activeJobEventSource) { activeJobEventSource.close(); activeJobEventSource = null; }
               if (onComplete) onComplete();
             } else if (j.status === 'failed') {
               clearInterval(pollInterval);
               document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-xmark text-red-400';
-              document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+              document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_failed');
               document.getElementById('btn-close-job').classList.remove('hidden');
               if (activeJobEventSource) { activeJobEventSource.close(); activeJobEventSource = null; }
             }
@@ -932,7 +1097,7 @@
           if (event.status === 'completed') {
             if (pollInterval) clearInterval(pollInterval);
             document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-check text-emerald-400';
-            document.getElementById('job-modal-title').innerText = title + ' — Hoàn tất!';
+            document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_completed');
             document.getElementById('btn-close-job').classList.remove('hidden');
             es.close();
             activeJobEventSource = null;
@@ -940,7 +1105,7 @@
           } else if (event.status === 'failed') {
             if (pollInterval) clearInterval(pollInterval);
             document.getElementById('job-modal-icon').className = 'fa-solid fa-circle-xmark text-red-400';
-            document.getElementById('job-modal-title').innerText = title + ' — Thất bại!';
+            document.getElementById('job-modal-title').innerText = title + ' — ' + t('job_modal_failed');
             document.getElementById('btn-close-job').classList.remove('hidden');
             es.close();
             activeJobEventSource = null;
@@ -949,8 +1114,6 @@
       };
 
       es.onerror = () => {
-        // Nếu kết nối SSE gặp lỗi (ERR_INCOMPLETE_CHUNKED_ENCODING hoặc timeout),
-        // tự động chuyển sang chế độ Polling kiểm tra tiến trình 1.5s/lần mà không bị văng
         if (!pollInterval) {
           pollInterval = setInterval(checkStatusPolling, 1500);
           checkStatusPolling();
@@ -970,7 +1133,7 @@
     async function openBackupModal(siteId, domain) {
       currentBackupSiteId = siteId;
       document.getElementById('backup-modal-domain').innerText = domain;
-      document.getElementById('backup-modal-title').innerText = `Sao lưu: ${domain}`;
+      document.getElementById('backup-modal-title').innerText = `${t('backup_modal_title')}: ${domain}`;
       document.getElementById('modal-backup').classList.remove('hidden');
       await loadBackups();
     }
@@ -983,13 +1146,13 @@
     async function loadBackups() {
       if (!currentBackupSiteId) return;
       const container = document.getElementById('backup-list-container');
-      container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang tải...</p>`;
+      container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i>${t('table_loading')}</p>`;
       try {
         const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups`);
         const data = await res.json();
         const backups = data.backups || [];
         if (backups.length === 0) {
-          container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Chưa có bản sao lưu nào.</p>`;
+          container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">${t('backup_empty')}</p>`;
           return;
         }
         container.innerHTML = backups.map(b => `
@@ -999,11 +1162,11 @@
               <p class="text-[10px] text-slate-400">${b.size_human} · ${b.created_at}</p>
             </div>
             <div class="flex items-center space-x-1.5">
-              <button onclick="restoreBackup('${b.filename}')" title="Khôi phục từ bản này"
+              <button onclick="restoreBackup('${b.filename}')" title="${t('backup_btn_restore')}"
                 class="px-2 py-1 text-[10px] bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded">
-                <i class="fa-solid fa-rotate-left"></i> Restore
+                <i class="fa-solid fa-rotate-left"></i> ${t('backup_btn_restore')}
               </button>
-              <button onclick="deleteBackup('${b.filename}')" title="Xóa bản sao lưu này"
+              <button onclick="deleteBackup('${b.filename}')" title="${t('backup_btn_delete')}"
                 class="px-2 py-1 text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded">
                 <i class="fa-solid fa-trash"></i>
               </button>
@@ -1011,35 +1174,35 @@
           </div>
         `).join('');
       } catch (err) {
-        container.innerHTML = `<p class="text-xs text-red-400 text-center py-4">Lỗi tải danh sách sao lưu.</p>`;
+        container.innerHTML = `<p class="text-xs text-red-400 text-center py-4">Error loading backups.</p>`;
       }
     }
 
     async function createBackup() {
       if (!currentBackupSiteId) return;
       const btn = document.getElementById('btn-create-backup');
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang sao lưu...';
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${t('backup_creating')}`;
       btn.disabled = true;
       try {
         const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(`Đã tạo bản sao lưu: ${data.backup.filename}`, 'success');
+          showToast(t('toast_backup_created', { name: data.backup.filename }), 'success');
           await loadBackups();
         } else {
-          showToast(data.error || 'Tạo backup thất bại', 'error');
+          showToast(data.error || 'Backup creation failed', 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi tạo backup', 'error');
+        showToast('Error creating backup', 'error');
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo bản sao lưu';
+        btn.innerHTML = `<i class="fa-solid fa-plus"></i> <span data-i18n="backup_btn_create">${t('backup_btn_create')}</span>`;
         btn.disabled = false;
       }
     }
 
     async function restoreBackup(filename) {
-      if (!confirm(`Khôi phục từ bản: "${filename}"?\nThao tác này sẽ ghi đè dữ liệu hiện tại!`)) return;
-      showToast(`Đang khôi phục từ ${filename}...`, 'info');
+      if (!confirm(t('backup_confirm_restore', { filename }))) return;
+      showToast(`${t('backup_btn_restore')}: ${filename}...`, 'info');
       try {
         const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups/restore`, {
           method: 'POST',
@@ -1047,28 +1210,28 @@
         });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast('Khôi phục website thành công!', 'success');
+          showToast(t('toast_backup_restored'), 'success');
         } else {
-          showToast(data.error || 'Khôi phục thất bại', 'error');
+          showToast(data.error || 'Restore failed', 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi khôi phục', 'error');
+        showToast('Restore error', 'error');
       }
     }
 
     async function deleteBackup(filename) {
-      if (!confirm(`Xóa bản sao lưu "${filename}"?`)) return;
+      if (!confirm(t('backup_confirm_delete', { filename }))) return;
       try {
         const res = await apiFetch(`/api/sites/${currentBackupSiteId}/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast('Đã xóa bản sao lưu', 'success');
+          showToast(t('toast_backup_deleted'), 'success');
           await loadBackups();
         } else {
-          showToast('Xóa thất bại', 'error');
+          showToast('Delete failed', 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi xóa', 'error');
+        showToast('Delete error', 'error');
       }
     }
 
@@ -1101,7 +1264,7 @@
       const totalCount = isArray ? currentPHPChangeSiteId.length : 1;
 
       closePHPModal();
-      openStepTaskModal(`Chuyển đổi phiên bản PHP`, `Bắt đầu cấu hình chuyển website sang PHP ${newVersion}...`);
+      openStepTaskModal(t('php_modal_title'), `${t('php_modal_title')}: PHP ${newVersion}...`);
 
       try {
         if (isArray) {
@@ -1112,7 +1275,7 @@
             const site = currentSites.find(s => s.id === sId);
             const domain = site ? site.domain : `Site #${sId}`;
 
-            updateStepTaskProgress(i, totalCount, `Đang cập nhật Nginx socket cho ${domain} -> PHP ${newVersion}...`);
+            updateStepTaskProgress(i, totalCount, `${domain} -> PHP ${newVersion}...`);
             try {
               const res = await apiFetch(`/api/sites/${sId}/change-php`, {
                 method: 'POST',
@@ -1122,73 +1285,73 @@
               if (data.status === 'success') {
                 successCount++;
               } else {
-                failedList.push(`${domain}: ${data.error || 'Lỗi cấu hình'}`);
+                failedList.push(`${domain}: ${data.error || 'Failed'}`);
               }
             } catch (e) {
-              failedList.push(`${domain}: Lỗi kết nối`);
+              failedList.push(`${domain}: Connection error`);
             }
           }
-          updateStepTaskProgress(totalCount, totalCount, 'Hoàn thành!');
-          let msg = `Đã chuyển đổi sang PHP ${newVersion} thành công cho ${successCount}/${totalCount} website!`;
+          updateStepTaskProgress(totalCount, totalCount, t('job_modal_completed'));
+          let msg = `${t('job_modal_completed')}: ${successCount}/${totalCount}`;
           if (failedList.length > 0) {
-            msg += `\nLỗi: ` + failedList.join(', ');
+            msg += `\nError: ` + failedList.join(', ');
           }
-          completeStepTaskModal('Chuyển đổi phiên bản PHP', msg, successCount > 0);
+          completeStepTaskModal(t('php_modal_title'), msg, successCount > 0);
         } else {
-          updateStepTaskProgress(1, 2, `Đang cập nhật socket FastCGI trong Nginx và reload dịch vụ...`);
+          updateStepTaskProgress(1, 2, `Nginx FastCGI socket reload...`);
           const res = await apiFetch(`/api/sites/${currentPHPChangeSiteId}/change-php`, {
             method: 'POST',
             body: JSON.stringify({ php_version: newVersion })
           });
           const data = await res.json();
           if (data.status === 'success') {
-            updateStepTaskProgress(2, 2, 'Hoàn thành!');
-            completeStepTaskModal('Chuyển đổi phiên bản PHP', data.message || `Đã chuyển sang PHP ${newVersion} thành công!`, true);
+            updateStepTaskProgress(2, 2, t('job_modal_completed'));
+            completeStepTaskModal(t('php_modal_title'), data.message || `PHP ${newVersion} activated!`, true);
           } else {
-            completeStepTaskModal('Chuyển đổi phiên bản PHP', data.error || 'Đổi PHP thất bại', false);
+            completeStepTaskModal(t('php_modal_title'), data.error || 'Failed', false);
           }
         }
         loadSites();
       } catch (err) {
-        completeStepTaskModal('Chuyển đổi phiên bản PHP', 'Lỗi kết nối khi gửi yêu cầu đổi PHP', false);
+        completeStepTaskModal(t('php_modal_title'), 'Connection error', false);
       }
     }
 
     async function scanVPS() {
       const btn = document.getElementById('btn-scan-vps');
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Đang quét...</span>';
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${t('btn_scanning')}</span>`;
       try {
         const res = await apiFetch('/api/discovery/scan', { method: 'POST' });
         const data = await res.json();
-        showToast(`Đã đồng bộ ${data.sites_discovered} website!`, 'success');
+        showToast(t('toast_scan_vps_success', { count: data.sites_discovered }), 'success');
         loadSites();
       } catch (err) {
-        showToast('Lỗi khi quét VPS', 'error');
+        showToast('Error scanning VPS', 'error');
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> <span>Quét lại VPS</span>';
+        btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>${t('btn_scan_vps')}</span>`;
       }
     }
 
     async function scanSiteMalware(id) {
-      showToast('Đang quét mã độc 3 tầng...', 'info');
+      showToast(`${t('tooltip_scan_malware')}...`, 'info');
       try {
         const res = await apiFetch(`/api/sites/${id}/scan`, { method: 'POST' });
         const data = await res.json();
         openScanModal(data);
       } catch (err) {
-        showToast('Lỗi khi quét mã độc', 'error');
+        showToast('Malware scan error', 'error');
       }
     }
 
     function openScanModal(data) {
-      document.getElementById('scan-modal-title').innerText = `Kết quả quét: ${data.domain}`;
+      document.getElementById('scan-modal-title').innerText = `${t('scan_modal_title')}: ${data.domain}`;
       const container = document.getElementById('scan-modal-content');
       if (data.total_warnings === 0) {
         container.innerHTML = `
           <div class="text-center py-8">
             <i class="fa-solid fa-circle-check text-emerald-400 text-4xl mb-3"></i>
-            <h4 class="font-semibold text-white">Website hoàn toàn sạch sẽ!</h4>
-            <p class="text-xs text-slate-400 mt-1">Không phát hiện file PHP trong thư mục uploads, không có webshell.</p>
+            <h4 class="font-semibold text-white">${t('scan_clean_title')}</h4>
+            <p class="text-xs text-slate-400 mt-1">${t('scan_clean_desc')}</p>
           </div>
         `;
       } else {
@@ -1225,10 +1388,10 @@
         if (data.login_url) {
           window.open(data.login_url, '_blank');
         } else {
-          showToast('Không thể lấy link đăng nhập', 'error');
+          showToast(t('toast_magic_login_error'), 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi yêu cầu Magic Login', 'error');
+        showToast(t('toast_magic_login_error'), 'error');
       }
     }
 
@@ -1237,13 +1400,14 @@
       try {
         const res = await apiFetch(`/api/sites/${siteId}`);
         const data = await res.json();
-        document.getElementById('drawer-title').innerText = `Plugins (${data.plugins ? data.plugins.length : 0})`;
+        const count = data.plugins ? data.plugins.length : 0;
+        document.getElementById('drawer-title').innerText = t('drawer_plugins_title', { count });
         document.getElementById('drawer-site-domain').innerText = data.site ? data.site.domain : '';
         const list = document.getElementById('drawer-plugin-list');
         list.innerHTML = '';
 
         if (!data.plugins || data.plugins.length === 0) {
-          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">Không có plugin nào.</div>`;
+          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">${t('drawer_plugins_empty')}</div>`;
         } else {
           data.plugins.forEach(p => {
             const isActive = p.status === 'active';
@@ -1255,19 +1419,19 @@
               <div class="flex-1 min-w-0">
                 <p class="font-medium text-white text-xs flex items-center space-x-1.5">
                   <span>${p.name}</span>
-                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">update</span>` : ''}
+                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">${t('update_badge')}</span>` : ''}
                 </p>
-                <p class="text-[10px] text-slate-400">v${p.version || 'N/A'} · <span class="${isActive ? 'text-emerald-400' : 'text-slate-500'}">${isActive ? 'Đang bật' : 'Đã tắt'}</span></p>
+                <p class="text-[10px] text-slate-400">v${p.version || 'N/A'} · <span class="${isActive ? 'text-emerald-400' : 'text-slate-500'}">${isActive ? t('plugin_active') : t('plugin_inactive')}</span></p>
               </div>
               <div class="flex items-center space-x-1.5 shrink-0">
                 ${hasUpdate ? `<button onclick="updatePlugin(${siteId}, '${p.slug}')" class="px-2 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-0.5">
-                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>Update</span>
+                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>${t('btn_update')}</span>
                 </button>` : ''}
                 <button onclick="togglePlugin(${siteId}, '${p.slug}', ${!isActive})"
                   class="px-2 py-1 text-[10px] rounded border transition ${isActive
                     ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30'
                     : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}">
-                  ${isActive ? '<i class="fa-solid fa-toggle-off"></i> Tắt' : '<i class="fa-solid fa-toggle-on"></i> Bật'}
+                  ${isActive ? `<i class="fa-solid fa-toggle-off"></i> ${t('btn_turn_off')}` : `<i class="fa-solid fa-toggle-on"></i> ${t('btn_turn_on')}`}
                 </button>
               </div>
             `;
@@ -1276,26 +1440,26 @@
         }
         document.getElementById('drawer-plugins').classList.remove('translate-x-full');
       } catch (err) {
-        showToast('Lỗi tải danh sách plugin', 'error');
+        showToast('Error loading plugins', 'error');
       }
     }
 
     async function updateAllPluginsDrawer() {
       if (!currentDrawerSiteId) return;
-      openStepTaskModal('Cập nhật Tất Cả Plugins', 'Đang cập nhật toàn bộ plugins của website...');
-      updateStepTaskProgress(1, 2, 'Đang chạy wp plugin update --all...');
+      openStepTaskModal(t('btn_update_all_drawer'), `${t('btn_update_all_drawer')}...`);
+      updateStepTaskProgress(1, 2, 'wp plugin update --all...');
       try {
         const res = await apiFetch(`/api/sites/${currentDrawerSiteId}/plugins/update-all`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          completeStepTaskModal('Cập nhật Tất Cả Plugins', 'Đã cập nhật toàn bộ plugins thành công!', true);
+          completeStepTaskModal(t('btn_update_all_drawer'), t('job_modal_completed'), true);
           openPluginDrawer(currentDrawerSiteId);
           loadSites();
         } else {
-          completeStepTaskModal('Cập nhật Tất Cả Plugins', data.error || 'Cập nhật thất bại', false);
+          completeStepTaskModal(t('btn_update_all_drawer'), data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal('Cập nhật Tất Cả Plugins', 'Lỗi kết nối khi cập nhật plugins', false);
+        completeStepTaskModal(t('btn_update_all_drawer'), 'Connection error', false);
       }
     }
 
@@ -1307,13 +1471,13 @@
         });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(`${activate ? 'Đã kích hoạt' : 'Đã vô hiệu hóa'} plugin ${slug}`, 'success');
+          showToast(`${activate ? t('btn_turn_on') : t('btn_turn_off')}: ${slug}`, 'success');
           openPluginDrawer(siteId);
         } else {
-          showToast(data.error || 'Thao tác thất bại', 'error');
+          showToast(data.error || 'Failed', 'error');
         }
       } catch (err) {
-        showToast('Lỗi khi toggle plugin', 'error');
+        showToast('Error toggling plugin', 'error');
       }
     }
 
@@ -1327,33 +1491,34 @@
       try {
         const res = await apiFetch(`/api/sites/${siteId}`);
         const data = await res.json();
-        document.getElementById('drawer-themes-title').innerText = `Themes (${data.themes ? data.themes.length : 0})`;
+        const count = data.themes ? data.themes.length : 0;
+        document.getElementById('drawer-themes-title').innerText = t('drawer_themes_title', { count });
         document.getElementById('drawer-themes-site-domain').innerText = data.site ? data.site.domain : '';
         const list = document.getElementById('drawer-theme-list');
         list.innerHTML = '';
 
         if (!data.themes || data.themes.length === 0) {
-          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">Không có theme nào hoặc chưa quét. Nhấn "Quét lại VPS" để cập nhật.</div>`;
+          list.innerHTML = `<div class="text-slate-500 text-xs py-4 text-center">${t('drawer_themes_empty')}</div>`;
         } else {
-          data.themes.forEach(t => {
-            const hasUpdate = t.has_update == 1;
-            const isActive = t.status === 'active';
+          data.themes.forEach(tItem => {
+            const hasUpdate = tItem.has_update == 1;
+            const isActive = tItem.status === 'active';
             const div = document.createElement('div');
             div.className = 'py-3 flex items-center justify-between gap-2';
             div.innerHTML = `
               <div class="flex-1 min-w-0">
                 <p class="font-medium text-white text-xs flex items-center space-x-1.5">
                   <i class="fa-solid fa-paintbrush text-purple-400 text-[10px]"></i>
-                  <span>${t.name}</span>
-                  ${isActive ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Đang dùng</span>` : ''}
-                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">update</span>` : ''}
+                  <span>${tItem.name}</span>
+                  ${isActive ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">${t('theme_in_use')}</span>` : ''}
+                  ${hasUpdate ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">${t('update_badge')}</span>` : ''}
                 </p>
-                <p class="text-[10px] text-slate-400 font-mono mt-0.5">slug: ${t.slug} · v${t.version || 'N/A'}${t.update_version ? ` → v${t.update_version}` : ''}</p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">slug: ${tItem.slug} · v${tItem.version || 'N/A'}${tItem.update_version ? ` → v${tItem.update_version}` : ''}</p>
               </div>
               <div class="flex items-center space-x-1.5 shrink-0">
-                ${hasUpdate ? `<button onclick="updateTheme(${siteId}, '${t.slug}')" class="px-2.5 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-1 font-medium">
-                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>Update</span>
-                </button>` : `<span class="text-[10px] text-slate-500 px-2 py-0.5">Bản mới nhất</span>`}
+                ${hasUpdate ? `<button onclick="updateTheme(${siteId}, '${tItem.slug}')" class="px-2.5 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded flex items-center space-x-1 font-medium">
+                  <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i><span>${t('btn_update')}</span>
+                </button>` : `<span class="text-[10px] text-slate-500 px-2 py-0.5">${t('theme_latest')}</span>`}
               </div>
             `;
             list.appendChild(div);
@@ -1361,7 +1526,7 @@
         }
         document.getElementById('drawer-themes').classList.remove('translate-x-full');
       } catch (err) {
-        showToast('Lỗi tải danh sách theme', 'error');
+        showToast('Error loading themes', 'error');
       }
     }
 
@@ -1370,57 +1535,57 @@
     }
 
     async function updateTheme(siteId, slug) {
-      openStepTaskModal(`Cập nhật Theme: ${slug}`, `Đang tải và cập nhật theme ${slug}...`);
-      updateStepTaskProgress(1, 2, `Đang chạy wp theme update ${slug}...`);
+      openStepTaskModal(`Theme: ${slug}`, `${t('btn_update')}: ${slug}...`);
+      updateStepTaskProgress(1, 2, `wp theme update ${slug}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/themes/${slug}/update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          completeStepTaskModal(`Cập nhật Theme: ${slug}`, `Đã cập nhật theme ${slug} thành công!`, true);
+          completeStepTaskModal(`Theme: ${slug}`, t('job_modal_completed'), true);
           openThemeDrawer(siteId);
           loadSites();
         } else {
-          completeStepTaskModal(`Cập nhật Theme: ${slug}`, data.error || 'Cập nhật theme thất bại', false);
+          completeStepTaskModal(`Theme: ${slug}`, data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal(`Cập nhật Theme: ${slug}`, 'Lỗi kết nối khi gửi yêu cầu cập nhật theme', false);
+        completeStepTaskModal(`Theme: ${slug}`, 'Connection error', false);
       }
     }
 
     async function updateAllThemesDrawer() {
       if (!currentThemeDrawerSiteId) return;
-      openStepTaskModal('Cập nhật Tất Cả Themes', 'Đang cập nhật toàn bộ themes của website...');
-      updateStepTaskProgress(1, 2, 'Đang chạy wp theme update --all...');
+      openStepTaskModal(t('btn_update_all_drawer'), `${t('btn_update_all_drawer')}...`);
+      updateStepTaskProgress(1, 2, 'wp theme update --all...');
       try {
         const res = await apiFetch(`/api/sites/${currentThemeDrawerSiteId}/themes/update-all`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          completeStepTaskModal('Cập nhật Tất Cả Themes', 'Đã cập nhật toàn bộ themes thành công!', true);
+          completeStepTaskModal(t('btn_update_all_drawer'), t('job_modal_completed'), true);
           openThemeDrawer(currentThemeDrawerSiteId);
           loadSites();
         } else {
-          completeStepTaskModal('Cập nhật Tất Cả Themes', data.error || 'Cập nhật thất bại', false);
+          completeStepTaskModal(t('btn_update_all_drawer'), data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal('Cập nhật Tất Cả Themes', 'Lỗi kết nối khi cập nhật themes', false);
+        completeStepTaskModal(t('btn_update_all_drawer'), 'Connection error', false);
       }
     }
 
     async function updatePlugin(siteId, slug) {
-      openStepTaskModal(`Cập nhật Plugin: ${slug}`, `Đang tải và cập nhật plugin ${slug}...`);
-      updateStepTaskProgress(1, 2, `Đang chạy wp plugin update ${slug}...`);
+      openStepTaskModal(`Plugin: ${slug}`, `${t('btn_update')}: ${slug}...`);
+      updateStepTaskProgress(1, 2, `wp plugin update ${slug}...`);
       try {
         const res = await apiFetch(`/api/sites/${siteId}/plugins/${slug}/update`, { method: 'POST' });
         const data = await res.json();
         if (data.status === 'success') {
-          completeStepTaskModal(`Cập nhật Plugin: ${slug}`, `Đã cập nhật plugin ${slug} thành công!`, true);
+          completeStepTaskModal(`Plugin: ${slug}`, t('job_modal_completed'), true);
           openPluginDrawer(siteId);
           loadSites();
         } else {
-          completeStepTaskModal(`Cập nhật Plugin: ${slug}`, data.error || 'Cập nhật thất bại', false);
+          completeStepTaskModal(`Plugin: ${slug}`, data.error || 'Failed', false);
         }
       } catch (err) {
-        completeStepTaskModal(`Cập nhật Plugin: ${slug}`, 'Lỗi khi gửi yêu cầu cập nhật', false);
+        completeStepTaskModal(`Plugin: ${slug}`, 'Connection error', false);
       }
     }
 
@@ -1435,7 +1600,7 @@
     async function handleCreateSite(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit-create');
-      btn.innerText = 'Đang khởi tạo...';
+      btn.innerText = t('create_btn_submitting');
       btn.disabled = true;
 
       const payload = {
@@ -1455,16 +1620,16 @@
         });
         const data = await res.json();
         if (data.status === 'success') {
-          showToast(`Đã tạo thành công ${data.domain}!`, 'success');
+          showToast(`Created: ${data.domain}!`, 'success');
           closeCreateModal();
           loadSites();
         } else {
-          showToast(data.error || 'Tạo website thất bại', 'error');
+          showToast(data.error || 'Creation failed', 'error');
         }
       } catch (err) {
-        showToast('Lỗi máy chủ', 'error');
+        showToast('Server error', 'error');
       } finally {
-        btn.innerText = 'Bắt đầu tạo';
+        btn.innerText = t('create_btn_submit');
         btn.disabled = false;
       }
     }
@@ -1489,7 +1654,8 @@
       }, 3500);
     }
 
-    // Khởi chạy kiểm tra đăng nhập
+    // Khởi tạo hệ thống đa ngôn ngữ & kiểm tra xác thực đăng nhập
+    initLanguage();
     checkAuth();
   </script>
 </body>
