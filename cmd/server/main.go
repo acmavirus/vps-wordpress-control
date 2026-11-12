@@ -18,7 +18,7 @@ import (
 	"vps-wordpress-control/internal/web"
 )
 
-var Version = "v1.0.15"
+var Version = "v1.0.16"
 
 type HealthResponse struct {
 	Status    string `json:"status"`

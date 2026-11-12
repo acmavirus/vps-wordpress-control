@@ -60,8 +60,16 @@ fi
 echo -e "${GREEN}[2/3] Dừng dịch vụ và thay thế binary...${NC}"
 systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
 
-mkdir -p "${INSTALL_DIR}/bin"
+mkdir -p "${INSTALL_DIR}/bin" "${INSTALL_DIR}/templates"
 tar -xzf "${TMP_FILE}" -C "${INSTALL_DIR}/bin/"
+if [ -d "${INSTALL_DIR}/bin/templates" ]; then
+    cp -rn "${INSTALL_DIR}/bin/templates/"* "${INSTALL_DIR}/templates/" 2>/dev/null || true
+    rm -rf "${INSTALL_DIR}/bin/templates"
+fi
+# Đảm bảo template Nginx tồn tại
+if [ ! -f "${INSTALL_DIR}/templates/nginx-wp.conf" ]; then
+    curl -sSLf "https://raw.githubusercontent.com/${GITHUB_REPO}/main/templates/nginx-wp.conf" -o "${INSTALL_DIR}/templates/nginx-wp.conf" 2>/dev/null || true
+fi
 chmod +x "${INSTALL_DIR}/bin/wp-control"
 rm -f "${TMP_FILE}"
 

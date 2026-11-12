@@ -134,7 +134,8 @@ func (p *Provisioner) CreateSite(req CreateSiteRequest) (*CreateSiteResponse, er
 	// 4. Tạo VirtualHost Nginx
 	sslActive := false
 	if err := p.configureNginx(domain, rootPath, phpVer); err != nil {
-		log.Printf("[Provisioner Cảnh Báo] Lỗi cấu hình Nginx: %v", err)
+		log.Printf("[Provisioner Lỗi] Lỗi cấu hình Nginx cho %s: %v", domain, err)
+		return nil, fmt.Errorf("lỗi cấu hình Nginx cho %s: %w", domain, err)
 	} else if req.EnableSSL {
 		// 5. Cấp SSL Let's Encrypt qua Certbot
 		if p.issueCertbotSSL(domain, adminEmail) {
@@ -187,26 +188,147 @@ func (p *Provisioner) createMySQLDatabase(dbName, dbUser, dbPass string) error {
 	return cmd.Run()
 }
 
-func (p *Provisioner) configureNginx(domain, rootPath, phpVersion string) error {
-	tmplPath := filepath.Join(p.cfg.NginxTmplDir, "nginx-wp.conf")
-	content, err := os.ReadFile(tmplPath)
-	if err != nil {
-		return fmt.Errorf("không thể đọc template nginx: %w", err)
+const defaultNginxTemplate = `# Nginx VirtualHost Template cho WordPress (VPS WordPress Control)
+# Tu dong toi uu hoa hieu nang va bao mat da tang
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{DOMAIN}} www.{{DOMAIN}};
+    root {{ROOT_PATH}};
+    index index.php index.html index.htm;
+    client_max_body_size 100M;
+
+    access_log /var/log/nginx/{{DOMAIN}}_access.log;
+    error_log /var/log/nginx/{{DOMAIN}}_error.log;
+
+    # 1. Chặn truy cập file nhạy cảm
+    location ~* /(?:wp-config\.php|readme\.html|license\.txt|\.git|\.env|\.user\.ini) {
+        deny all;
+    }
+
+    # 2. CHỐNG WEBSHELL: Tuyệt đối chặn thực thi PHP trong thư mục uploads
+    location ~* ^/wp-content/uploads/.*\.php$ {
+        deny all;
+    }
+
+    # 3. Chặn tấn công Brute Force vào XML-RPC
+    location = /xmlrpc.php {
+        deny all;
+    }
+
+    # 4. WordPress Permalinks
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    # 5. Xử lý PHP-FPM
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass {{FASTCGI_PASS}};
+        fastcgi_param PHP_ADMIN_VALUE "open_basedir={{SITE_DIR}}/:{{ROOT_PATH}}/:/tmp/:/proc/";
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_read_timeout 300;
+    }
+
+    # 6. Cache tài nguyên tĩnh (Browser Caching)
+    location ~* \.(jpg|jpeg|gif|png|webp|svg|ico|css|js|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        access_log off;
+    }
+
+    # Cho phep certbot xac thuc SSL
+    location ~ /\.well-known {
+        allow all;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+`
+
+func resolvePHPSocket(phpVersion string) string {
+	target := fmt.Sprintf("/run/php/php%s-fpm.sock", phpVersion)
+	if _, err := os.Stat(target); err == nil {
+		return "unix:" + target
 	}
 
-	confStr := string(content)
+	// Danh sách fallback các socket khả dụng
+	candidates := []string{
+		"/run/php/php-fpm.sock",
+		"/run/php/php8.3-fpm.sock",
+		"/run/php/php8.2-fpm.sock",
+		"/run/php/php8.1-fpm.sock",
+		"/run/php/php8.0-fpm.sock",
+		"/run/php/php7.4-fpm.sock",
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			log.Printf("[Provisioner] Socket %s không tồn tại, tự động chuyển sang socket khả dụng: %s", target, c)
+			return "unix:" + c
+		}
+	}
+	return "unix:" + target
+}
+
+func (p *Provisioner) configureNginx(domain, rootPath, phpVersion string) error {
+	tmplPath := filepath.Join(p.cfg.NginxTmplDir, "nginx-wp.conf")
+	var confStr string
+
+	content, err := os.ReadFile(tmplPath)
+	if err != nil || len(content) == 0 {
+		log.Printf("[Provisioner] Không tìm thấy file template tại %s, sử dụng template mặc định nhúng sẵn", tmplPath)
+		confStr = defaultNginxTemplate
+		// Tự động ghi lại file template để lưu trữ lâu dài
+		if err := os.MkdirAll(p.cfg.NginxTmplDir, 0755); err == nil {
+			_ = os.WriteFile(tmplPath, []byte(defaultNginxTemplate), 0644)
+		}
+	} else {
+		confStr = string(content)
+	}
+
+	fastcgiPass := resolvePHPSocket(phpVersion)
+	siteDir := filepath.Dir(rootPath)
+
 	confStr = strings.ReplaceAll(confStr, "{{DOMAIN}}", domain)
 	confStr = strings.ReplaceAll(confStr, "{{ROOT_PATH}}", rootPath)
+	confStr = strings.ReplaceAll(confStr, "{{SITE_DIR}}", siteDir)
 	confStr = strings.ReplaceAll(confStr, "{{PHP_VERSION}}", phpVersion)
+	confStr = strings.ReplaceAll(confStr, "{{FASTCGI_PASS}}", fastcgiPass)
+	// Đảm bảo tương thích ngược nếu template cũ dùng unix:/run/php/php{{PHP_VERSION}}-fpm.sock
+	confStr = strings.ReplaceAll(confStr, fmt.Sprintf("unix:/run/php/php%s-fpm.sock", phpVersion), fastcgiPass)
+
+	// Đảm bảo thư mục lưu cấu hình Nginx tồn tại
+	if err := os.MkdirAll(p.cfg.NginxSitesDir, 0755); err != nil {
+		return fmt.Errorf("không thể tạo thư mục cấu hình nginx: %w", err)
+	}
 
 	destPath := filepath.Join(p.cfg.NginxSitesDir, domain+".conf")
 	if err := os.WriteFile(destPath, []byte(confStr), 0644); err != nil {
 		return fmt.Errorf("không thể ghi file cấu hình nginx: %w", err)
 	}
 
-	// Test & reload Nginx
-	_ = exec.Command("nginx", "-t").Run()
+	// Nếu lưu vào sites-available thì tự tạo symlink sang sites-enabled
+	if strings.Contains(p.cfg.NginxSitesDir, "sites-available") {
+		enabledDir := filepath.Join(filepath.Dir(p.cfg.NginxSitesDir), "sites-enabled")
+		_ = os.MkdirAll(enabledDir, 0755)
+		_ = os.Symlink(destPath, filepath.Join(enabledDir, domain+".conf"))
+	}
+
+	// Test cú pháp Nginx
+	testOut, testErr := exec.Command("nginx", "-t").CombinedOutput()
+	if testErr != nil {
+		return fmt.Errorf("kiểm tra cấu hình Nginx thất bại: %s", string(testOut))
+	}
+
+	// Reload Nginx & PHP-FPM
 	_ = exec.Command("systemctl", "reload", "nginx").Run()
+	_ = exec.Command("systemctl", "reload", "php"+phpVersion+"-fpm").Run()
+	_ = exec.Command("systemctl", "reload", "php8.3-fpm").Run()
+	_ = exec.Command("systemctl", "reload", "php-fpm").Run()
 	return nil
 }
 

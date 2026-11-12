@@ -46,11 +46,12 @@ jobs:
           CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
           mkdir -p dist
+          cp -r templates dist/
           # -s -w loại bỏ bảng ký hiệu debug và DWARF, giảm 50% dung lượng và chống dịch ngược
           go build -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o dist/wp-control cmd/server/main.go
           
           # Đóng gói tar.gz
-          tar -czf "${{ matrix.pkg_name }}.tar.gz" -C dist wp-control
+          tar -czf "${{ matrix.pkg_name }}.tar.gz" -C dist wp-control templates
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
