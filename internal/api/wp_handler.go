@@ -49,6 +49,8 @@ func (h *WPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/sites/{id}/issue-ssl", h.HandleIssueSSL)
 	mux.HandleFunc("POST /api/sites/{id}/themes/{slug}/update", h.HandleUpdateTheme)
 	mux.HandleFunc("POST /api/sites/{id}/themes/update-all", h.HandleUpdateAllThemes)
+	mux.HandleFunc("DELETE /api/sites/{id}", h.HandleDeleteSite)
+	mux.HandleFunc("POST /api/sites/bulk-delete", h.HandleBulkDeleteSites)
 }
 
 func (h *WPHandler) HandleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -569,5 +571,115 @@ func (h *WPHandler) HandleUpdateAllThemes(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
 		"message": "Đã cập nhật tất cả theme của website thành công",
+	})
+}
+
+// HandleDeleteSite xóa 1 website theo ID
+func (h *WPHandler) HandleDeleteSite(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error": "ID website không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	deleteFiles := true
+	deleteDB := true
+	deleteNginx := true
+
+	if r.URL.Query().Get("files") == "false" {
+		deleteFiles = false
+	}
+	if r.URL.Query().Get("db") == "false" {
+		deleteDB = false
+	}
+	if r.URL.Query().Get("nginx") == "false" {
+		deleteNginx = false
+	}
+
+	if r.Body != nil && r.ContentLength > 0 {
+		var req struct {
+			DeleteFiles *bool `json:"delete_files"`
+			DeleteDB    *bool `json:"delete_db"`
+			DeleteNginx *bool `json:"delete_nginx"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			if req.DeleteFiles != nil {
+				deleteFiles = *req.DeleteFiles
+			}
+			if req.DeleteDB != nil {
+				deleteDB = *req.DeleteDB
+			}
+			if req.DeleteNginx != nil {
+				deleteNginx = *req.DeleteNginx
+			}
+		}
+	}
+
+	resp, err := h.provisioner.DeleteSite(provisioner.DeleteSiteRequest{
+		SiteID:      id,
+		DeleteFiles: deleteFiles,
+		DeleteDB:    deleteDB,
+		DeleteNginx: deleteNginx,
+	})
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// BulkDeleteSitesRequest payload xóa hàng loạt website
+type BulkDeleteSitesRequest struct {
+	SiteIDs     []int64 `json:"ids"`
+	DeleteFiles bool    `json:"delete_files"`
+	DeleteDB    bool    `json:"delete_db"`
+	DeleteNginx bool    `json:"delete_nginx"`
+}
+
+// HandleBulkDeleteSites xóa hàng loạt website theo danh sách ID
+func (h *WPHandler) HandleBulkDeleteSites(w http.ResponseWriter, r *http.Request) {
+	var req BulkDeleteSitesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	if len(req.SiteIDs) == 0 {
+		http.Error(w, `{"error": "Danh sách website cần xoá trống"}`, http.StatusBadRequest)
+		return
+	}
+
+	var deleted []string
+	var errors []string
+
+	for _, id := range req.SiteIDs {
+		resp, err := h.provisioner.DeleteSite(provisioner.DeleteSiteRequest{
+			SiteID:      id,
+			DeleteFiles: req.DeleteFiles,
+			DeleteDB:    req.DeleteDB,
+			DeleteNginx: req.DeleteNginx,
+		})
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("ID %d: %v", id, err))
+		} else {
+			deleted = append(deleted, resp.Domain)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":        "success",
+		"deleted_count": len(deleted),
+		"deleted_sites": deleted,
+		"errors":        errors,
+		"message":       fmt.Sprintf("Đã xoá hoàn tất %d/%d website", len(deleted), len(req.SiteIDs)),
 	})
 }

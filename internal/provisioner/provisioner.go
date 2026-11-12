@@ -348,3 +348,135 @@ func generateRandomString(n int) string {
 	return hex.EncodeToString(bytes)[:n]
 }
 
+type DeleteSiteRequest struct {
+	SiteID      int64 `json:"site_id"`
+	DeleteFiles bool  `json:"delete_files"`
+	DeleteDB    bool  `json:"delete_db"`
+	DeleteNginx bool  `json:"delete_nginx"`
+}
+
+type DeleteSiteResponse struct {
+	Status  string `json:"status"`
+	Domain  string `json:"domain"`
+	Message string `json:"message"`
+}
+
+// DeleteSite thực hiện xoá toàn diện website theo các tuỳ chọn
+func (p *Provisioner) DeleteSite(req DeleteSiteRequest) (*DeleteSiteResponse, error) {
+	var domain, rootPath, dbName, dbUser string
+	query := "SELECT domain, root_path, db_name, db_user FROM sites WHERE id = ?"
+	err := p.db.QueryRow(query, req.SiteID).Scan(&domain, &rootPath, &dbName, &dbUser)
+	if err != nil {
+		return nil, fmt.Errorf("không tìm thấy website ID %d: %w", req.SiteID, err)
+	}
+
+	log.Printf("[Provisioner] Bắt đầu xoá website: %s (ID: %d) [Files: %v, DB: %v, Nginx: %v]",
+		domain, req.SiteID, req.DeleteFiles, req.DeleteDB, req.DeleteNginx)
+
+	// 1. Xoá cấu hình Nginx VirtualHost và Chứng chỉ SSL Certbot
+	if req.DeleteNginx && domain != "" {
+		nginxDirs := []string{
+			"/etc/nginx/sites-enabled",
+			"/etc/nginx/sites-available",
+			"/etc/nginx/conf.d",
+		}
+		for _, dir := range nginxDirs {
+			pattern := filepath.Join(dir, fmt.Sprintf("*%s*", domain))
+			matches, _ := filepath.Glob(pattern)
+			for _, f := range matches {
+				_ = os.Remove(f)
+				log.Printf("[Provisioner] Đã gỡ bỏ cấu hình Nginx: %s", f)
+			}
+		}
+
+		// Xoá chứng chỉ SSL Certbot nếu có
+		_ = exec.Command("certbot", "delete", "--cert-name", domain, "--non-interactive").Run()
+
+		// Kiểm tra lại cú pháp Nginx và reload dịch vụ
+		_ = exec.Command("nginx", "-t").Run()
+		_ = exec.Command("systemctl", "reload", "nginx").Run()
+	}
+
+	// 2. Xoá cơ sở dữ liệu MySQL / MariaDB và User tương ứng
+	if req.DeleteDB && dbName != "" {
+		lowerDB := strings.ToLower(dbName)
+		// Bảo vệ an toàn tuyệt đối các cơ sở dữ liệu hệ thống
+		sysDBs := map[string]bool{
+			"mysql":              true,
+			"information_schema": true,
+			"performance_schema": true,
+			"sys":                true,
+		}
+		if !sysDBs[lowerDB] {
+			sqlCmds := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", dbName)
+			if dbUser != "" && dbUser != "root" {
+				sqlCmds += fmt.Sprintf(" DROP USER IF EXISTS '%s'@'localhost'; FLUSH PRIVILEGES;", dbUser)
+			}
+			cmd := exec.Command("mysql", "-e", sqlCmds)
+			if err := cmd.Run(); err != nil {
+				log.Printf("[Provisioner Cảnh Báo] Lỗi xoá MySQL database/user: %v", err)
+			} else {
+				log.Printf("[Provisioner] Đã xoá MySQL database %s và user %s", dbName, dbUser)
+			}
+		}
+	}
+
+	// 3. Xoá toàn bộ thư mục tệp mã nguồn website
+	if req.DeleteFiles && rootPath != "" {
+		cleanRoot := filepath.Clean(rootPath)
+		// Danh sách các đường dẫn hệ thống tuyệt đối cấm xoá
+		forbidden := map[string]bool{
+			"/":     true,
+			"/root": true,
+			"/var":  true,
+			"/var/www": true,
+			"/home": true,
+			"/etc":  true,
+			"/usr":  true,
+			"/tmp":  true,
+			"/bin":  true,
+			"/boot": true,
+			"/dev":  true,
+			"/lib":  true,
+			"/opt":  true,
+		}
+
+		if !forbidden[cleanRoot] && len(cleanRoot) > 5 {
+			parent := filepath.Dir(cleanRoot)
+			targetDir := cleanRoot
+
+			// Nếu rootPath là dạng /var/www/<domain>/public_html, ta xoá luôn thư mục cha /var/www/<domain>
+			if filepath.Base(cleanRoot) == "public_html" && (strings.Contains(filepath.Base(parent), domain) || strings.EqualFold(filepath.Base(parent), domain)) {
+				targetDir = parent
+			}
+
+			// Chỉ xoá khi targetDir thực sự gắn liền với domain hoặc nằm trong thư mục web/home hợp lệ
+			if strings.Contains(targetDir, domain) || strings.HasPrefix(targetDir, "/var/www/") || strings.HasPrefix(targetDir, "/home/") {
+				if err := os.RemoveAll(targetDir); err != nil {
+					log.Printf("[Provisioner Cảnh Báo] Lỗi xoá thư mục %s: %v", targetDir, err)
+				} else {
+					log.Printf("[Provisioner] Đã xoá thư mục mã nguồn: %s", targetDir)
+				}
+			}
+		}
+	}
+
+	// 4. Xoá sạch các bản ghi liên quan trong SQLite Database của bảng điều khiển
+	tx, err := p.db.Begin()
+	if err == nil {
+		_, _ = tx.Exec("DELETE FROM site_plugins WHERE site_id = ?", req.SiteID)
+		_, _ = tx.Exec("DELETE FROM site_themes WHERE site_id = ?", req.SiteID)
+		_, _ = tx.Exec("DELETE FROM scan_results WHERE site_id = ?", req.SiteID)
+		_, _ = tx.Exec("DELETE FROM jobs WHERE site_id = ?", req.SiteID)
+		_, _ = tx.Exec("DELETE FROM sites WHERE id = ?", req.SiteID)
+		_ = tx.Commit()
+	}
+
+	log.Printf("[Provisioner Thành Công] Website %s (ID: %d) đã được xoá sạch hoàn toàn!", domain, req.SiteID)
+	return &DeleteSiteResponse{
+		Status:  "success",
+		Domain:  domain,
+		Message: fmt.Sprintf("Website %s đã được xoá thành công!", domain),
+	}, nil
+}
+
