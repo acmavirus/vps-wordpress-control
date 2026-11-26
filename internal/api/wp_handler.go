@@ -273,16 +273,16 @@ func (h *WPHandler) switchNginxPHP(domain, newPHP string) bool {
 	return found
 }
 
-// HandleGetPHPVersions quét và trả về danh sách các phiên bản PHP đang cài đặt trên VPS
+// HandleGetPHPVersions quét các phiên bản PHP đang cài đặt trên VPS và trả về danh sách đầy đủ từ mới nhất đến cũ
 func (h *WPHandler) HandleGetPHPVersions(w http.ResponseWriter, r *http.Request) {
-	versionsMap := make(map[string]bool)
+	installedMap := make(map[string]bool)
 
 	// 1. Quét từ /run/php/ (sockets FPM)
 	if files, err := os.ReadDir("/run/php"); err == nil {
 		sockRegex := regexp.MustCompile(`^php([0-9.]+)-fpm\.sock$`)
 		for _, f := range files {
 			if matches := sockRegex.FindStringSubmatch(f.Name()); len(matches) > 1 {
-				versionsMap[matches[1]] = true
+				installedMap[matches[1]] = true
 			}
 		}
 	}
@@ -291,27 +291,56 @@ func (h *WPHandler) HandleGetPHPVersions(w http.ResponseWriter, r *http.Request)
 	if dirs, err := os.ReadDir("/etc/php"); err == nil {
 		for _, d := range dirs {
 			if d.IsDir() && regexp.MustCompile(`^[0-9.]+$`).MatchString(d.Name()) {
-				versionsMap[d.Name()] = true
+				installedMap[d.Name()] = true
 			}
 		}
 	}
 
+	// Danh sách chuẩn các phiên bản PHP từ mới nhất đến cũ
+	standardVersions := []string{"8.5", "8.4", "8.3", "8.2", "8.1", "8.0", "7.4", "7.3", "7.2", "7.1", "7.0", "5.6"}
+	allMap := make(map[string]bool)
+	for _, v := range standardVersions {
+		allMap[v] = true
+	}
+	var installed []string
+	for v := range installedMap {
+		allMap[v] = true
+		installed = append(installed, v)
+	}
+
 	var versions []string
-	for v := range versionsMap {
+	for v := range allMap {
 		versions = append(versions, v)
 	}
 
-	// Nếu chưa phát hiện hoặc đang trong container test, trả về danh sách chuẩn
-	if len(versions) == 0 {
-		versions = []string{"7.4", "8.0", "8.1", "8.2", "8.3", "8.4"}
-	} else {
-		sort.Strings(versions)
+	// Sắp xếp giảm dần (mới nhất -> cũ nhất) theo major.minor
+	sortDesc := func(list []string) {
+		sort.Slice(list, func(i, j int) bool {
+			p1 := strings.Split(list[i], ".")
+			p2 := strings.Split(list[j], ".")
+			maj1, _ := strconv.Atoi(p1[0])
+			maj2, _ := strconv.Atoi(p2[0])
+			if maj1 != maj2 {
+				return maj1 > maj2
+			}
+			var min1, min2 int
+			if len(p1) > 1 {
+				min1, _ = strconv.Atoi(p1[1])
+			}
+			if len(p2) > 1 {
+				min2, _ = strconv.Atoi(p2[1])
+			}
+			return min1 > min2
+		})
 	}
+	sortDesc(versions)
+	sortDesc(installed)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":   "success",
-		"versions": versions,
+		"status":    "success",
+		"versions":  versions,
+		"installed": installed,
 	})
 }
 

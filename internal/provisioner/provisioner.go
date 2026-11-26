@@ -256,14 +256,21 @@ func resolvePHPSocket(phpVersion string) string {
 		return "unix:" + target
 	}
 
-	// Danh sách fallback các socket khả dụng
+	// Danh sách fallback các socket khả dụng (ưu tiên từ mới nhất đến cũ)
 	candidates := []string{
 		"/run/php/php-fpm.sock",
+		"/run/php/php8.5-fpm.sock",
+		"/run/php/php8.4-fpm.sock",
 		"/run/php/php8.3-fpm.sock",
 		"/run/php/php8.2-fpm.sock",
 		"/run/php/php8.1-fpm.sock",
 		"/run/php/php8.0-fpm.sock",
 		"/run/php/php7.4-fpm.sock",
+		"/run/php/php7.3-fpm.sock",
+		"/run/php/php7.2-fpm.sock",
+		"/run/php/php7.1-fpm.sock",
+		"/run/php/php7.0-fpm.sock",
+		"/run/php/php5.6-fpm.sock",
 	}
 	for _, c := range candidates {
 		if _, err := os.Stat(c); err == nil {
